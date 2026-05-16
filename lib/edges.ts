@@ -1,0 +1,117 @@
+import { redis } from "./redis";
+import {
+  adjFromKey,
+  adjToKey,
+  allEdgesKey,
+  edgeKey,
+  orphansKey,
+} from "./keys";
+import { clearConnected, getNode, markConnected } from "./nodes";
+import type { Edge, EdgeCreateInput } from "./types";
+
+// ── CRUD ─────────────────────────────────────────────────────────────────────
+
+export const createEdge = async (
+  userId: string,
+  input: EdgeCreateInput,
+): Promise<{ edge: Edge; fromNode: NonNullable<Awaited<ReturnType<typeof getNode>>>; toNode: NonNullable<Awaited<ReturnType<typeof getNode>>> }> => {
+  if (input.from === input.to) {
+    throw new Error("Cannot create an edge from a node to itself.");
+  }
+
+  const [fromNode, toNode] = await Promise.all([
+    getNode(userId, input.from),
+    getNode(userId, input.to),
+  ]);
+
+  if (!fromNode) {
+    throw new Error(
+      `Cannot create edge: node '${input.from}' does not exist. Create it first with vtx_node_create.`,
+    );
+  }
+  if (!toNode) {
+    throw new Error(
+      `Cannot create edge: node '${input.to}' does not exist. Create it first with vtx_node_create.`,
+    );
+  }
+
+  const id = crypto.randomUUID();
+  const edge: Edge = {
+    id,
+    from: input.from,
+    to: input.to,
+    type: input.type,
+    evidence: input.evidence,
+    notes: input.notes,
+    createdAt: new Date().toISOString(),
+  };
+
+  await Promise.all([
+    redis.set(edgeKey(userId, id), edge),
+    redis.sadd(allEdgesKey(userId), id),
+    redis.sadd(adjFromKey(userId, input.from), id),
+    redis.sadd(adjToKey(userId, input.to), id),
+    redis.srem(orphansKey(userId), input.from),
+    redis.srem(orphansKey(userId), input.to),
+    markConnected(userId, input.from),
+    markConnected(userId, input.to),
+  ]);
+
+  const [updatedFrom, updatedTo] = await Promise.all([
+    getNode(userId, input.from),
+    getNode(userId, input.to),
+  ]);
+
+  return { edge, fromNode: updatedFrom!, toNode: updatedTo! };
+};
+
+export const getEdge = async (
+  userId: string,
+  edgeId: string,
+): Promise<Edge | null> => {
+  const stored = await redis.get<Edge>(edgeKey(userId, edgeId));
+  return stored ?? null;
+};
+
+export const deleteEdge = async (
+  userId: string,
+  edgeId: string,
+): Promise<boolean> => {
+  const edge = await getEdge(userId, edgeId);
+  if (!edge) return false;
+
+  await Promise.all([
+    redis.del(edgeKey(userId, edgeId)),
+    redis.srem(allEdgesKey(userId), edgeId),
+    redis.srem(adjFromKey(userId, edge.from), edgeId),
+    redis.srem(adjToKey(userId, edge.to), edgeId),
+  ]);
+
+  // Check if either endpoint is now orphaned.
+  await Promise.all([
+    clearConnected(userId, edge.from),
+    clearConnected(userId, edge.to),
+  ]);
+
+  return true;
+};
+
+// ── Adjacency queries ────────────────────────────────────────────────────────
+
+export const getEdgesFrom = async (
+  userId: string,
+  nodeId: string,
+): Promise<Edge[]> => {
+  const ids = (await redis.smembers(adjFromKey(userId, nodeId))) as string[];
+  const edges = await Promise.all(ids.map((id) => getEdge(userId, id)));
+  return edges.filter((e): e is Edge => e !== null);
+};
+
+export const getEdgesTo = async (
+  userId: string,
+  nodeId: string,
+): Promise<Edge[]> => {
+  const ids = (await redis.smembers(adjToKey(userId, nodeId))) as string[];
+  const edges = await Promise.all(ids.map((id) => getEdge(userId, id)));
+  return edges.filter((e): e is Edge => e !== null);
+};
