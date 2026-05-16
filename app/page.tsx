@@ -30,7 +30,7 @@ const s = {
   },
   h1: { fontSize: 26, fontWeight: 700, margin: 0 },
   tagline: {
-    color: "#849440",
+    color: "#8CBDB9",
     fontWeight: 500,
     margin: "0 0 8px 0",
     fontSize: 14,
@@ -49,8 +49,8 @@ const s = {
     fontFamily: "monospace",
   },
   primaryBtn: {
-    background: "#849440",
-    color: "#F7F5FA",
+    background: "#DFA649",
+    color: "#1E1830",
     border: "none",
     borderRadius: 10,
     padding: "13px 24px",
@@ -72,8 +72,8 @@ const s = {
   },
   urlBox: {
     padding: "14px 16px",
-    background: "rgba(132,148,64,0.06)",
-    border: "1px solid rgba(132,148,64,0.2)",
+    background: "rgba(140,189,185,0.06)",
+    border: "1px solid rgba(140,189,185,0.2)",
     borderRadius: 12,
   },
   urlLabel: {
@@ -85,15 +85,15 @@ const s = {
   },
   code: {
     fontSize: 12,
-    color: "#849440",
+    color: "#8CBDB9",
     flex: 1,
     wordBreak: "break-all" as const,
   },
   copyBtn: {
-    background: "rgba(132,148,64,0.1)",
-    border: "1px solid rgba(132,148,64,0.25)",
+    background: "rgba(140,189,185,0.1)",
+    border: "1px solid rgba(140,189,185,0.25)",
     borderRadius: 6,
-    color: "#849440",
+    color: "#8CBDB9",
     cursor: "pointer",
     fontSize: 12,
     padding: "6px 12px",
