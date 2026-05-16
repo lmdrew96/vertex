@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Space+Grotesk:wght@400;500;600&family=Geist+Mono:wght@400&display=swap');
+
+:root {
+  --color-olive:     #849440;
+  --color-teal-deep: #244952;
+  --color-gold:      #DFA649;
+  --color-purple:    #88739E;
+  --color-mint:      #8CBDB9;
+  --color-green:     #97D181;
+  --color-lavender:  #DBD5E2;
+  --color-surface:   #F7F5FA;
+  --color-ink:       #1E1830;
+  --color-white:     #FFFFFF;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Space Grotesk', system-ui, sans-serif;
+  --font-mono:    'Geist Mono', 'Fira Code', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 1rem;
+  line-height: 1.56;
+}

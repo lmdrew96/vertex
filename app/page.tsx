@@ -14,116 +14,161 @@ const s = {
     alignItems: "center",
     justifyContent: "center",
     padding: "48px 24px",
-    fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif",
-    color: "#F7F5FA",
+    background: "var(--color-surface)",
   },
   card: {
     maxWidth: 560,
     width: "100%",
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 16,
-    padding: "32px 28px",
+    background: "var(--color-white)",
+    borderRadius: 24,
+    padding: "36px 32px",
+    boxShadow: "0px 1px 1.5px rgba(0,0,0,0.10), 0px 1px 1px rgba(0,0,0,0.10)",
     display: "flex",
     flexDirection: "column" as const,
-    gap: 16,
+    gap: 20,
   },
-  h1: { fontSize: 26, fontWeight: 700, margin: 0 },
+  h1: {
+    fontFamily: "var(--font-display)",
+    fontVariationSettings: "'SOFT' 0, 'WONK' 1",
+    fontSize: 36,
+    fontWeight: 600,
+    color: "var(--color-ink)",
+    margin: 0,
+    lineHeight: 1.1,
+  },
   tagline: {
-    color: "#8CBDB9",
+    fontFamily: "var(--font-body)",
+    color: "var(--color-teal-deep)",
     fontWeight: 500,
-    margin: "0 0 8px 0",
+    margin: "4px 0 0 0",
     fontSize: 14,
   },
-  p: { color: "rgba(247,245,250,0.55)", lineHeight: 1.55, margin: 0 },
+  p: {
+    fontFamily: "var(--font-body)",
+    color: "var(--color-teal-deep)",
+    lineHeight: 1.55,
+    margin: "8px 0 0 0",
+    fontSize: 15,
+    opacity: 0.8,
+  },
   input: {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(247,245,250,0.1)",
+    fontFamily: "var(--font-mono)",
+    background: "var(--color-surface)",
+    border: "1.5px solid var(--color-lavender)",
     borderRadius: 8,
-    color: "#F7F5FA",
+    color: "var(--color-ink)",
     fontSize: 14,
     padding: "10px 12px",
     outline: "none",
     width: "100%",
-    boxSizing: "border-box" as const,
-    fontFamily: "monospace",
   },
   primaryBtn: {
-    background: "#DFA649",
-    color: "#1E1830",
+    fontFamily: "var(--font-body)",
+    background: "var(--color-gold)",
+    color: "var(--color-ink)",
     border: "none",
-    borderRadius: 10,
-    padding: "13px 24px",
-    fontWeight: 700,
+    borderRadius: 9999,
+    padding: "13px 28px",
+    fontWeight: 600,
     fontSize: 15,
     cursor: "pointer",
     width: "100%",
     textAlign: "left" as const,
+    transition: "opacity 0.15s ease",
   },
   secondaryBtn: {
-    background: "rgba(255,255,255,0.07)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 8,
-    color: "#F7F5FA",
+    fontFamily: "var(--font-body)",
+    background: "var(--color-surface)",
+    border: "1.5px solid var(--color-lavender)",
+    borderRadius: 9999,
+    color: "var(--color-ink)",
     cursor: "pointer",
     fontSize: 14,
-    padding: "10px 16px",
+    fontWeight: 500,
+    padding: "10px 18px",
     whiteSpace: "nowrap" as const,
   },
+  divider: {
+    color: "var(--color-teal-deep)",
+    fontSize: 12,
+    textAlign: "center" as const,
+    margin: "0",
+    opacity: 0.4,
+  },
   urlBox: {
-    padding: "14px 16px",
-    background: "rgba(140,189,185,0.06)",
-    border: "1px solid rgba(140,189,185,0.2)",
-    borderRadius: 12,
+    padding: "16px 18px",
+    background: "var(--color-surface)",
+    border: "1.5px solid var(--color-lavender)",
+    borderRadius: 16,
   },
   urlLabel: {
+    fontFamily: "var(--font-body)",
     fontSize: 11,
-    color: "rgba(247,245,250,0.4)",
+    fontWeight: 500,
+    color: "var(--color-teal-deep)",
     marginBottom: 8,
     textTransform: "uppercase" as const,
     letterSpacing: "0.08em",
+    opacity: 0.6,
   },
   code: {
+    fontFamily: "var(--font-mono)",
     fontSize: 12,
-    color: "#8CBDB9",
+    color: "var(--color-teal-deep)",
     flex: 1,
     wordBreak: "break-all" as const,
   },
   copyBtn: {
-    background: "rgba(140,189,185,0.1)",
-    border: "1px solid rgba(140,189,185,0.25)",
-    borderRadius: 6,
-    color: "#8CBDB9",
+    fontFamily: "var(--font-body)",
+    background: "var(--color-mint)",
+    border: "none",
+    borderRadius: 9999,
+    color: "var(--color-ink)",
     cursor: "pointer",
     fontSize: 12,
-    padding: "6px 12px",
+    fontWeight: 500,
+    padding: "6px 14px",
     whiteSpace: "nowrap" as const,
   },
   tipBox: {
-    fontSize: 12,
-    color: "rgba(247,245,250,0.4)",
+    fontFamily: "var(--font-body)",
+    fontSize: 13,
+    color: "var(--color-teal-deep)",
     lineHeight: 1.6,
-    background: "rgba(255,255,255,0.02)",
-    border: "1px solid rgba(255,255,255,0.05)",
-    borderRadius: 8,
-    padding: "12px 14px",
+    background: "var(--color-surface)",
+    border: "1.5px solid var(--color-lavender)",
+    borderRadius: 12,
+    padding: "14px 16px",
   },
-  tipKey: { color: "#88739E", fontFamily: "monospace" },
+  tipKey: {
+    fontFamily: "var(--font-mono)",
+    fontSize: 12,
+    color: "var(--color-purple)",
+  },
   switchBtn: {
+    fontFamily: "var(--font-body)",
     background: "none",
     border: "none",
-    color: "rgba(247,245,250,0.25)",
+    color: "var(--color-teal-deep)",
     cursor: "pointer",
     fontSize: 12,
-    marginTop: 8,
+    opacity: 0.4,
+    padding: 0,
   },
-  divider: {
-    color: "rgba(247,245,250,0.2)",
+  errorText: {
+    fontFamily: "var(--font-body)",
+    color: "#c0392b",
+    fontSize: 13,
+    margin: 0,
+  },
+  footer: {
+    fontFamily: "var(--font-body)",
+    color: "var(--color-teal-deep)",
     fontSize: 12,
-    textAlign: "center" as const,
-    margin: "4px 0",
+    margin: 0,
+    paddingTop: 4,
+    opacity: 0.4,
   },
-  errorText: { color: "#ff9090", fontSize: 13 },
 };
 
 export default function Home() {
@@ -174,7 +219,7 @@ export default function Home() {
       <div style={s.card}>
         <div>
           <h1 style={s.h1}>Vertex</h1>
-          <p style={s.tagline}>Vertexism knowledge graph MCP.</p>
+          <p style={s.tagline}>Vertexism knowledge graph MCP</p>
           <p style={s.p}>
             A graph-structured idea database. Nodes are things — concepts, people, works,
             claims, questions. Edges are how they relate. Meaning lives in the connections.
@@ -215,9 +260,9 @@ export default function Home() {
 
             <div style={s.tipBox}>
               Add this URL to Claude Desktop under{" "}
-              <span style={s.tipKey}>Settings → Integrations</span>, or paste
-              it into your <span style={s.tipKey}>claude_desktop_config.json</span>{" "}
-              as a <span style={s.tipKey}>{'"type": "url"'}</span> MCP server.
+              <span style={s.tipKey}>Settings → Integrations</span>, or paste it into your{" "}
+              <span style={s.tipKey}>claude_desktop_config.json</span> as a{" "}
+              <span style={s.tipKey}>{'"type": "url"'}</span> MCP server.
               Your token is your namespace — keep it private and don&rsquo;t lose it.
             </div>
 
@@ -227,19 +272,9 @@ export default function Home() {
           </>
         )}
 
-        <p
-          style={{
-            color: "rgba(247,245,250,0.3)",
-            fontSize: 12,
-            margin: 0,
-            paddingTop: 4,
-          }}
-        >
+        <p style={s.footer}>
           Built by{" "}
-          <a
-            href="https://adhdesigns.dev"
-            style={{ color: "#88739E", textDecoration: "none" }}
-          >
+          <a href="https://adhdesigns.dev" style={{ color: "var(--color-purple)", textDecoration: "none" }}>
             ADHDesigns
           </a>
           .
