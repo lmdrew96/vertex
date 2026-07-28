@@ -258,6 +258,13 @@ export default function Home() {
               </div>
             </div>
 
+            <a
+              href={`/${token}/graph`}
+              style={{ ...s.primaryBtn, display: "block", textAlign: "center", textDecoration: "none" }}
+            >
+              Open my graph →
+            </a>
+
             <div style={s.tipBox}>
               Add this URL to Claude Desktop under{" "}
               <span style={s.tipKey}>Settings → Integrations</span>, or paste it into your{" "}

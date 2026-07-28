@@ -57,6 +57,7 @@ import {
   autoArchiveStaleOrphans,
   createNode,
   generateSlug,
+  getAllTags,
   getNode,
   getOrphanIds,
   searchNodes,
@@ -297,6 +298,30 @@ describe("autoArchiveStaleOrphans", () => {
   it("returns empty when there are no orphans", async () => {
     const archived = await autoArchiveStaleOrphans(USER);
     expect(archived).toHaveLength(0);
+  });
+});
+
+describe("getAllTags", () => {
+  it("returns distinct, sorted tags across all nodes", async () => {
+    await createNode(USER, {
+      type: "concept",
+      name: "A",
+      description: "d",
+      tags: ["domain:sla", "origin:nae"],
+    });
+    await createNode(USER, {
+      type: "claim",
+      name: "B",
+      description: "d",
+      tags: ["domain:sla", "origin:literature"],
+    });
+
+    const tags = await getAllTags(USER);
+    expect(tags).toEqual(["domain:sla", "origin:literature", "origin:nae"]);
+  });
+
+  it("returns an empty array when there are no nodes", async () => {
+    expect(await getAllTags(USER)).toEqual([]);
   });
 });
 

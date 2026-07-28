@@ -160,6 +160,17 @@ export const searchNodes = async (
   });
 };
 
+// ── Tags ─────────────────────────────────────────────────────────────────────
+
+// Returns every distinct tag currently in use, for the Sidebar tag filter dropdown.
+export const getAllTags = async (userId: string): Promise<string[]> => {
+  const allIds = (await redis.smembers(allNodesKey(userId))) as string[];
+  const nodes = (await Promise.all(allIds.map((id) => getNode(userId, id)))).filter(
+    (n): n is VertexNode => n !== null,
+  );
+  return [...new Set(nodes.flatMap((n) => n.tags))].sort();
+};
+
 // ── Orphan helpers ───────────────────────────────────────────────────────────
 
 export const getOrphanIds = async (userId: string): Promise<string[]> =>
