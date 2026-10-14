@@ -18,7 +18,7 @@ Vertex is Nae's **people graph**: an MCP server and web graph browser for her ne
 - **Framework:** Next.js (app router)
 - **Runtime:** Vercel edge (`export const runtime = "edge"` on the MCP route and graph page). A Cloudflare Workers migration is pending as its own patch.
 - **Storage:** Upstash Redis via `@upstash/redis` (its own DB, named "Vertex")
-- **Auth:** none yet. The landing page generates a random token (`crypto.randomUUID()`, kept in localStorage) that serves as the `userId` path segment of the MCP URL. Account auth is a pending patch and must land before attachments.
+- **Auth:** email + password accounts, ported from Tangle (`lib/auth.ts`, `app/api/auth/route.ts` on the nodejs runtime). See "Accounts and tokens" below.
 - **MCP protocol:** Hand-rolled JSON-RPC 2.0. **No `@modelcontextprotocol/sdk`.**
 - **Graph UI:** `@xyflow/react`
 - **Tests:** Vitest with an in-memory Redis shim (see the top of each `lib/*.test.ts`)
@@ -41,7 +41,9 @@ npm run test:watch   # vitest watch
 
 ```
 app/
-  page.tsx                  # Landing page: token generation + MCP URL
+  page.tsx                  # Landing page: sign up/in, MCP URL, rotate
+  auth-panel.tsx            # Sign-up/sign-in form (with claim-existing-URL field)
+  api/auth/route.ts         # me / signup / login / logout / rotate
   [userId]/mcp/route.ts     # GET (SSE) + POST + OPTIONS: JSON-RPC dispatcher
   [userId]/graph/           # Graph browser: GraphShell, GraphCanvas, Sidebar, DetailPanel, QuickCreate
     actions.ts              # Server actions wrapping lib/ for the UI
@@ -54,6 +56,7 @@ lib/
   edges.ts                  # Edge CRUD, from→to pair rules, adjacency index maintenance
   meetings.ts               # logMeeting(): vtx_meeting_log, reused by the web UI's "Log a meeting"
   brief.ts                  # brief() + whoKnows(): vtx_brief, vtx_who_knows
+  auth.ts                   # PBKDF2 accounts, sessions, rate limits, token → graph resolution
   graph.ts                  # BFS traversal + Mermaid render + node-with-edges hydration
   *.test.ts                 # Unit tests
 ```
@@ -102,6 +105,15 @@ All keys are namespaced `vertex:{type}:{userId}:{id}`. `lib/keys.ts` is the sing
 - `vertex:nodes:all:{userId}` / `vertex:edges:all:{userId}` → SETs of IDs
 - `vertex:adj:from:{userId}:{nodeId}` / `vertex:adj:to:{userId}:{nodeId}` → SETs of edgeIds
 - `vertex:orphans:{userId}` → SET of nodeIds with zero edges
+
+### Accounts and tokens
+
+The `[userId]` path segment is a **token**, not the graph namespace. Always run it through `resolveGraphId(token)` first (the MCP route, the graph page, and every server action do this):
+- An owned token (`vertex:tokenowner:{token}` → `{ email, graphId }`) resolves to the account's `graphId`.
+- A retired token (`vertex:tokenretired:{token}`, set on rotation) resolves to null, which is a 401.
+- A token no account has ever claimed resolves to itself, the same as before accounts existed.
+
+`graphId` is the account's first token and never changes, so graph keys never move. Signup can claim an existing token (the URL Claude is already connected to). Rotation mints a new token, retires the old one, and keeps `graphId`. Other keys: `vertex:account:{email}`, `vertex:session:{sid}` (HttpOnly cookie `vertex_session`, 30 days), `vertex:rl:*`. PBKDF2 uses 100k iterations, stored per record and within Workers' Web Crypto limit. No native crypto deps.
 
 ### Orphans
 

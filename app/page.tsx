@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { PublicAccount } from "@/lib/auth";
+import { AuthPanel } from "./auth-panel";
 
 const BASE_URL =
   typeof window !== "undefined" ? window.location.origin : "https://vertex.adhdesigns.dev";
@@ -171,41 +173,79 @@ const s = {
   },
 };
 
+type Account = PublicAccount | null | undefined; // undefined = still loading
+
 export default function Home() {
-  const [token, setToken] = useState("");
-  const [tokenInput, setTokenInput] = useState("");
+  const [account, setAccount] = useState<Account>(undefined);
+  const [localToken, setLocalToken] = useState("");
   const [copied, setCopied] = useState(false);
+  const [confirmRotate, setConfirmRotate] = useState(false);
+  const [rotated, setRotated] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) setToken(saved);
+    try {
+      setLocalToken(localStorage.getItem(STORAGE_KEY) ?? "");
+    } catch {
+      // Storage blocked — the account is the source of truth anyway.
+    }
+    fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "me" }),
+    })
+      .then((r) => r.json())
+      .then((d) => setAccount(d.account ?? null))
+      .catch(() => {
+        setAccount(null);
+        setError("Couldn't reach the server to check your sign-in.");
+      });
   }, []);
 
-  const generate = () => {
-    const t = crypto.randomUUID();
-    localStorage.setItem(STORAGE_KEY, t);
-    setToken(t);
-    setError("");
-  };
-
-  const loadExisting = () => {
-    const t = tokenInput.trim();
-    if (!t) {
-      setError("Paste a token first.");
-      return;
+  const remember = (token: string) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, token);
+    } catch {
+      // Non-essential convenience; ignore.
     }
-    localStorage.setItem(STORAGE_KEY, t);
-    setToken(t);
-    setError("");
+    setLocalToken(token);
   };
 
-  const switchToken = () => {
-    localStorage.removeItem(STORAGE_KEY);
-    setToken("");
-    setTokenInput("");
+  const post = async (action: string) => {
+    const res = await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+    return data;
   };
 
+  const signOut = async () => {
+    try {
+      await post("logout");
+      setAccount(null);
+      setRotated(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't sign out.");
+    }
+  };
+
+  const rotate = async () => {
+    try {
+      const data = await post("rotate");
+      setAccount(data.account);
+      remember(data.account.token);
+      setConfirmRotate(false);
+      setRotated(true);
+      setError("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't rotate the token.");
+    }
+  };
+
+  const token = account?.token ?? "";
   const mcpUrl = token ? `${BASE_URL}/${token}/mcp` : "";
 
   const copy = async () => {
@@ -219,35 +259,25 @@ export default function Home() {
       <div style={s.card}>
         <div>
           <h1 style={s.h1}>Vertex</h1>
-          <p style={s.tagline}>Vertexism knowledge graph MCP</p>
+          <p style={s.tagline}>People graph MCP</p>
           <p style={s.p}>
             Your network as a graph. Nodes are people, groups, meetings, and topics. Edges are
             how they relate — who belongs where, who introduced whom, what came up when.
           </p>
         </div>
 
-        {!token ? (
+        {account === undefined ? (
+          <p style={s.divider}>Loading…</p>
+        ) : account ? (
           <>
-            <button onClick={generate} style={s.primaryBtn}>
-              Generate my Vertex URL →
-            </button>
-            <p style={s.divider}>or</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && loadExisting()}
-                placeholder="Paste an existing token"
-                style={s.input}
-              />
-              <button onClick={loadExisting} style={s.secondaryBtn}>
-                Load
-              </button>
-            </div>
-            {error && <p style={s.errorText}>{error}</p>}
-          </>
-        ) : (
-          <>
+            {rotated && (
+              <div style={{ ...s.tipBox, borderColor: "var(--color-gold)" }}>
+                <strong>New URL below — update your Claude connector.</strong> The old URL stopped
+                working. In Claude, open <span style={s.tipKey}>Settings → Connectors → Vertex</span>{" "}
+                and replace the URL with this one.
+              </div>
+            )}
+
             <div style={s.urlBox}>
               <p style={s.urlLabel}>Your MCP URL</p>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -266,16 +296,57 @@ export default function Home() {
             </a>
 
             <div style={s.tipBox}>
-              Add this URL to Claude Desktop under{" "}
-              <span style={s.tipKey}>Settings → Integrations</span>, or paste it into your{" "}
-              <span style={s.tipKey}>claude_desktop_config.json</span> as a{" "}
-              <span style={s.tipKey}>{'"type": "url"'}</span> MCP server.
-              Your token is your namespace — keep it private and don&rsquo;t lose it.
+              Add this URL to Claude under <span style={s.tipKey}>Settings → Connectors</span>.
+              Anyone with the URL can read and edit your graph, so keep it private. If it leaks,
+              rotate it.
             </div>
 
-            <button onClick={switchToken} style={s.switchBtn}>
-              Use a different token
-            </button>
+            {confirmRotate ? (
+              <div style={s.tipBox}>
+                Rotating gives you a new URL and turns off the current one. Every Claude connected
+                to Vertex will need the new URL.{" "}
+                <span style={{ display: "inline-flex", gap: 8, marginTop: 8 }}>
+                  <button onClick={rotate} style={s.copyBtn}>
+                    Rotate now
+                  </button>
+                  <button onClick={() => setConfirmRotate(false)} style={s.switchBtn}>
+                    Cancel
+                  </button>
+                </span>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmRotate(true)} style={s.switchBtn}>
+                Rotate my URL
+              </button>
+            )}
+
+            {error && <p style={s.errorText}>{error}</p>}
+
+            <p style={s.divider}>
+              Signed in as {account.email} ·{" "}
+              <button onClick={signOut} style={{ ...s.switchBtn, opacity: 1 }}>
+                Sign out
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            {localToken && (
+              <div style={s.tipBox}>
+                This browser has a Vertex URL that isn&rsquo;t linked to an account yet. Create an
+                account below to claim it. It&rsquo;s already filled in, and your Claude connector
+                keeps working.
+              </div>
+            )}
+            {error && <p style={s.errorText}>{error}</p>}
+            <AuthPanel
+              claimToken={localToken}
+              onSignedIn={(a) => {
+                setAccount(a);
+                remember(a.token);
+                setError("");
+              }}
+            />
           </>
         )}
 

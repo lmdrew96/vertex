@@ -1,3 +1,4 @@
+import { resolveGraphId } from "@/lib/auth";
 import { SERVER_INFO, TOOLS, ToolError, dispatchTool, err, ok } from "@/lib/mcp";
 
 export const runtime = "edge";
@@ -10,12 +11,27 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Mcp-Session-Id",
 };
 
+// Malformed or rotated-out tokens get a real 401, not an empty graph.
+const unauthorized = (id: unknown = null): Response =>
+  Response.json(
+    {
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: -32001,
+        message:
+          "This Vertex URL is invalid or was replaced. Sign in at vertex.adhdesigns.dev to get the current one.",
+      },
+    },
+    { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+  );
+
 // GET — SSE endpoint for server-to-client messages (required by streamable HTTP transport).
 // This server has no server-initiated messages; we open the stream and hold it.
 // Vercel will close it on function timeout, which is fine — clients reconnect.
 export async function GET(req: Request, context: RouteContext) {
-  const { userId } = await context.params;
-  if (!userId) return new Response("Missing userId", { status: 400 });
+  const { userId: token } = await context.params;
+  if (!(await resolveGraphId(token))) return unauthorized();
 
   const stream = new ReadableStream({
     start(controller) {
@@ -36,8 +52,9 @@ export async function GET(req: Request, context: RouteContext) {
 }
 
 export async function POST(req: Request, context: RouteContext) {
-  const { userId } = await context.params;
-  if (!userId) return err(null, -32600, "Missing userId in path");
+  const { userId: token } = await context.params;
+  const userId = await resolveGraphId(token);
+  if (!userId) return unauthorized();
 
   let body: { method?: string; params?: unknown; id?: unknown };
   try {

@@ -20,3 +20,22 @@ export const adjToKey = (userId: string, nodeId: string) =>
 
 export const orphansKey = (userId: string) =>
   `vertex:orphans:${userId}`;
+
+// ── Accounts (web auth + token → graph indirection) ──────────────────────────
+
+export const accountKey = (email: string) =>
+  `vertex:account:${email}`;
+
+export const sessionKey = (sid: string) =>
+  `vertex:session:${sid}`;
+
+// token → { email, graphId }. The graph namespace never moves when a token rotates.
+export const tokenOwnerKey = (token: string) =>
+  `vertex:tokenowner:${token}`;
+
+// Set on a token rotated out of an account, so it 401s instead of reading as an empty graph.
+export const retiredTokenKey = (token: string) =>
+  `vertex:tokenretired:${token}`;
+
+export const rateKey = (scope: string, id: string) =>
+  `vertex:rl:${scope}:${id}`;
