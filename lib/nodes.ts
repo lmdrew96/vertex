@@ -246,38 +246,40 @@ export type SearchOpts = {
   include_archived?: boolean;
 };
 
-export const searchNodes = async (
+export type SearchHit = {
+  node: VertexNode;
+  matchedIn: "name" | "description" | "notes";
+};
+
+const MATCH_RANK: Record<SearchHit["matchedIn"], number> = { name: 0, description: 1, notes: 2 };
+
+// Matches name > description > meeting notes, and reports where each node matched.
+export const searchNodeHits = async (
   userId: string,
   opts: SearchOpts,
-): Promise<VertexNode[]> => {
+): Promise<SearchHit[]> => {
   const { query, type, include_archived = false } = opts;
-  const allIds = (await redis.smembers(allNodesKey(userId))) as string[];
-  if (allIds.length === 0) return [];
-
-  const nodes = (
-    await Promise.all(allIds.map((id) => getNode(userId, id)))
-  ).filter((n): n is VertexNode => n !== null);
-
   const needle = query.toLowerCase();
+  const hits: SearchHit[] = [];
 
-  const filtered = nodes.filter((n) => {
-    if (!include_archived && n.status === "archived") return false;
-    if (type && n.type !== type) return false;
-    return (
-      n.name.toLowerCase().includes(needle) ||
-      n.description.toLowerCase().includes(needle)
-    );
-  });
+  for (const n of await listNodes(userId)) {
+    if (!include_archived && n.status === "archived") continue;
+    if (type && n.type !== type) continue;
+    if (n.name.toLowerCase().includes(needle)) hits.push({ node: n, matchedIn: "name" });
+    else if (n.description.toLowerCase().includes(needle)) hits.push({ node: n, matchedIn: "description" });
+    else if (n.type === "meeting" && n.fields.notes?.toLowerCase().includes(needle)) {
+      hits.push({ node: n, matchedIn: "notes" });
+    }
+  }
 
-  // Name match ranks above description-only match.
-  return filtered.sort((a, b) => {
-    const aNameMatch = a.name.toLowerCase().includes(needle);
-    const bNameMatch = b.name.toLowerCase().includes(needle);
-    if (aNameMatch && !bNameMatch) return -1;
-    if (!aNameMatch && bNameMatch) return 1;
-    return a.name.localeCompare(b.name);
-  });
+  return hits.sort(
+    (a, b) =>
+      MATCH_RANK[a.matchedIn] - MATCH_RANK[b.matchedIn] || a.node.name.localeCompare(b.node.name),
+  );
 };
+
+export const searchNodes = async (userId: string, opts: SearchOpts): Promise<VertexNode[]> =>
+  (await searchNodeHits(userId, opts)).map((h) => h.node);
 
 // ── Tags ─────────────────────────────────────────────────────────────────────
 

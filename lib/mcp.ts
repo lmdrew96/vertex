@@ -1,5 +1,6 @@
 import { deleteEdge, createEdge } from "./edges";
 import { graphQuery, graphRender, getNodeWithEdges } from "./graph";
+import { brief, whoKnows } from "./brief";
 import { logMeeting } from "./meetings";
 import {
   archiveNode,
@@ -7,7 +8,7 @@ import {
   createNode,
   getOrphanIds,
   getNode,
-  searchNodes,
+  searchNodeHits,
   updateNode,
 } from "./nodes";
 import {
@@ -143,7 +144,7 @@ export const TOOLS = [
   {
     name: "vtx_node_search",
     description:
-      "Full-text search across node names and descriptions. Case-insensitive substring match. Name matches rank above description matches.",
+      "Case-insensitive substring search across node names, descriptions, and meeting notes. Ranked name > description > notes; each result says where it matched (matchedIn).",
     inputSchema: {
       type: "object",
       properties: {
@@ -269,11 +270,36 @@ export const TOOLS = [
       required: ["date"],
     },
   },
+  {
+    name: "vtx_brief",
+    description:
+      "Pre-meeting brief for a person, group, topic, or meeting: the node and its fields, lastContact (most recent meeting date), recentMeetings (newest first, with notes excerpts), connected people (role, affiliation, and how they link), groups, topics, and openFollowUps (ControlledChaos task IDs from those meetings; check their status in ControlledChaos). Accepts an ID or name; if a name matches several nodes, returns status \"needs_choice\" with candidates.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        node: { type: "string", description: "Node ID or name (exact or partial)." },
+        limit_meetings: { type: "number", description: "How many recent meetings to include, 1–20. Default 5." },
+      },
+      required: ["node"],
+    },
+  },
+  {
+    name: "vtx_who_knows",
+    description:
+      "\"Who do I know who…\": finds people connected to a topic or phrase, ranked can_help_with > involved_in > mentioned (at a meeting about it, in meeting notes, or in their own profile). Each person comes with `why`, the paths that link them, so Nae sees the reason.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: 'A topic or free text, e.g. "public service".' },
+      },
+      required: ["query"],
+    },
+  },
 ] as const;
 
 export const SERVER_INFO = {
   name: "vertex-mcp",
-  version: "1.2.0",
+  version: "1.3.0",
   protocolVersion: "2024-11-05",
 };
 
@@ -415,12 +441,12 @@ export const dispatchTool = async (
     case "vtx_node_search": {
       const query = asString(args.query);
       if (!query) throw new ToolError(-32602, "vtx_node_search requires query");
-      const nodes = await searchNodes(userId, {
+      const results = await searchNodeHits(userId, {
         query,
         type: asNodeType(args.type),
         include_archived: asBoolean(args.include_archived),
       });
-      return textContent({ nodes, count: nodes.length });
+      return textContent({ results, count: results.length });
     }
 
     case "vtx_orphans_list": {
@@ -548,6 +574,26 @@ export const dispatchTool = async (
       } catch (e) {
         throw new ToolError(-32602, e instanceof Error ? e.message : "Failed to log meeting");
       }
+    }
+
+    case "vtx_brief": {
+      const node = asString(args.node);
+      if (!node) throw new ToolError(-32602, "vtx_brief requires node");
+      const limit = asNumber(args.limit_meetings);
+      if (limit !== undefined && (!Number.isInteger(limit) || limit < 1 || limit > 20)) {
+        throw new ToolError(-32602, "limit_meetings must be a whole number from 1 to 20");
+      }
+      const result = await brief(userId, node, limit);
+      if (!result) {
+        throw new ToolError(-32602, `Node '${node}' not found. Use vtx_node_search to find the right ID.`);
+      }
+      return textContent(result);
+    }
+
+    case "vtx_who_knows": {
+      const query = asString(args.query);
+      if (!query?.trim()) throw new ToolError(-32602, "vtx_who_knows requires query");
+      return textContent(await whoKnows(userId, query));
     }
 
     default:

@@ -53,6 +53,7 @@ lib/
   nodes.ts                  # Node CRUD, field validation, meeting naming, search, orphans
   edges.ts                  # Edge CRUD, from→to pair rules, adjacency index maintenance
   meetings.ts               # logMeeting(): vtx_meeting_log, reused by the web UI's "Log a meeting"
+  brief.ts                  # brief() + whoKnows(): vtx_brief, vtx_who_knows
   graph.ts                  # BFS traversal + Mermaid render + node-with-edges hydration
   *.test.ts                 # Unit tests
 ```
@@ -112,7 +113,11 @@ Nodes get slugs (`"Art Trembanis"` → `art-trembanis`, then `-2`, `-3` on colli
 
 ### Tools
 
-All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`. Planned (see the spec): `vtx_brief`, `vtx_who_knows`, and the `vtx_attachment_*` tools.
+All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`, `vtx_brief`, `vtx_who_knows`. Planned (see the spec): the `vtx_attachment_*` tools. When attachments land, wire their previews into `brief` and their `extractedText` into `searchNodeHits` and `whoKnows`.
+
+`vtx_node_search` matches name > description > meeting notes and reports `matchedIn`. The UI's `searchNodes` wraps the same logic and returns plain nodes.
+
+`vtx_who_knows` ranks `can_help_with` > `involved_in` > `mentioned`. A mention is attending a meeting about a matched topic, meeting notes that contain the query, or the person's own profile (description, role, affiliation, howWeMet).
 
 ### Meeting log matching (`lib/meetings.ts`)
 
