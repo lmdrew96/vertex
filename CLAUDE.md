@@ -52,6 +52,7 @@ lib/
   mcp.ts                    # ok/err helpers, TOOLS, SERVER_INFO, ToolError, dispatchTool()
   nodes.ts                  # Node CRUD, field validation, meeting naming, search, orphans
   edges.ts                  # Edge CRUD, from→to pair rules, adjacency index maintenance
+  meetings.ts               # logMeeting(): vtx_meeting_log, reused by the web UI's "Log a meeting"
   graph.ts                  # BFS traversal + Mermaid render + node-with-edges hydration
   *.test.ts                 # Unit tests
 ```
@@ -111,7 +112,19 @@ Nodes get slugs (`"Art Trembanis"` → `art-trembanis`, then `-2`, `-3` on colli
 
 ### Tools
 
-All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`. Planned (see the spec): `vtx_meeting_log`, `vtx_brief`, `vtx_who_knows`, and the `vtx_attachment_*` tools.
+All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`. Planned (see the spec): `vtx_brief`, `vtx_who_knows`, and the `vtx_attachment_*` tools.
+
+### Meeting log matching (`lib/meetings.ts`)
+
+`logMeeting` resolves every attendee, group, and topic before it writes anything. If any of them needs a choice, it returns `needs_choice` and creates nothing. Rules, in order:
+1. An existing node ID wins. A wrong type is an error. An archived node gets reactivated.
+2. Exactly one active node with the same name (case-insensitive) wins. Two or more is `ambiguous`.
+3. A name listed in `confirmNew` is created as a new node.
+4. An archived node with the same name gives `archived`.
+5. People only: a shared word or containment ("Trembanis" ~ "Art Trembanis") gives `similar`.
+6. Otherwise a new node is created.
+
+A meeting needs at least one attendee or a group, so it can't be born an orphan.
 
 ---
 

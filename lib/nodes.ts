@@ -202,6 +202,19 @@ export const updateNode = async (
   return next;
 };
 
+// Brings an archived node back — used when it gets a new edge (e.g. met again).
+export const reactivateNode = async (
+  userId: string,
+  nodeId: string,
+): Promise<VertexNode | null> => {
+  const current = await getNode(userId, nodeId);
+  if (!current) return null;
+  if (current.status === "active") return current;
+  const next: VertexNode = { ...current, status: "active", updatedAt: new Date().toISOString() };
+  await redis.set(nodeKey(userId, nodeId), next);
+  return next;
+};
+
 export const archiveNode = async (
   userId: string,
   nodeId: string,
@@ -218,6 +231,14 @@ export const archiveNode = async (
 };
 
 // ── Search ───────────────────────────────────────────────────────────────────
+
+// Every node, active and archived.
+export const listNodes = async (userId: string): Promise<VertexNode[]> => {
+  const allIds = (await redis.smembers(allNodesKey(userId))) as string[];
+  return (await Promise.all(allIds.map((id) => getNode(userId, id)))).filter(
+    (n): n is VertexNode => n !== null,
+  );
+};
 
 export type SearchOpts = {
   query: string;

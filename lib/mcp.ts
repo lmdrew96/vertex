@@ -1,5 +1,6 @@
 import { deleteEdge, createEdge } from "./edges";
 import { graphQuery, graphRender, getNodeWithEdges } from "./graph";
+import { logMeeting } from "./meetings";
 import {
   archiveNode,
   autoArchiveStaleOrphans,
@@ -229,11 +230,50 @@ export const TOOLS = [
       required: ["node_id"],
     },
   },
+  {
+    name: "vtx_meeting_log",
+    description:
+      "Log a whole meeting in one call: creates the meeting node, matches or creates attendees (person), the group, and topics, and connects them (attended, held_by, about). Names match case-insensitively against existing nodes of the right type. It never guesses: if a name is ambiguous, only similar to an existing person (\"Trembanis\" vs \"Art Trembanis\"), or matches an archived node, it returns status \"needs_choice\" with candidates and creates NOTHING. Re-call with the chosen node ID in place of the name, or list the name in confirm_new to create a new node. Passing an archived node's ID reactivates it. Needs at least one attendee or a group. Stores ControlledChaos IDs only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        date: { type: "string", description: "Meeting date, YYYY-MM-DD (Nae's local date)." },
+        name: {
+          type: "string",
+          description: 'Optional. Defaults to "{date} · {group or first attendee}", e.g. "2026-10-14 · PSAC".',
+        },
+        attendees: {
+          type: "array",
+          items: { type: "string" },
+          description: "People at the meeting (names or node IDs), not counting Nae. Unknown names become new person nodes.",
+        },
+        group: { type: "string", description: "Optional. The group whose meeting this was (name or node ID)." },
+        topics: {
+          type: "array",
+          items: { type: "string" },
+          description: "Topics covered (names or node IDs). Unknown names become new topic nodes.",
+        },
+        notes: { type: "string", description: "Optional markdown notes." },
+        cc_event_id: { type: "string", description: "Optional ControlledChaos event ID." },
+        follow_up_task_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional ControlledChaos task IDs for follow-ups already created there.",
+        },
+        confirm_new: {
+          type: "array",
+          items: { type: "string" },
+          description: "Names to create as NEW nodes even though similar ones exist (use after a needs_choice).",
+        },
+      },
+      required: ["date"],
+    },
+  },
 ] as const;
 
 export const SERVER_INFO = {
   name: "vertex-mcp",
-  version: "1.1.0",
+  version: "1.2.0",
   protocolVersion: "2024-11-05",
 };
 
@@ -481,6 +521,32 @@ export const dispatchTool = async (
         return textContent(result);
       } catch (e) {
         throw new ToolError(-32602, e instanceof Error ? e.message : "Graph render failed");
+      }
+    }
+
+    case "vtx_meeting_log": {
+      const date = asString(args.date);
+      if (!date) throw new ToolError(-32602, "vtx_meeting_log requires date (YYYY-MM-DD)");
+      for (const key of ["attendees", "topics", "follow_up_task_ids", "confirm_new"]) {
+        if (args[key] !== undefined && !asStringArray(args[key])) {
+          throw new ToolError(-32602, `${key} must be an array of strings`);
+        }
+      }
+      try {
+        const result = await logMeeting(userId, {
+          date,
+          name: asString(args.name),
+          attendees: asStringArray(args.attendees),
+          group: asString(args.group),
+          topics: asStringArray(args.topics),
+          notes: asString(args.notes),
+          ccEventId: asString(args.cc_event_id),
+          followUpTaskIds: asStringArray(args.follow_up_task_ids),
+          confirmNew: asStringArray(args.confirm_new),
+        });
+        return textContent(result);
+      } catch (e) {
+        throw new ToolError(-32602, e instanceof Error ? e.message : "Failed to log meeting");
       }
     }
 
