@@ -1,3 +1,4 @@
+import { listAllAttachments } from "./attachments";
 import { redis } from "./redis";
 import {
   adjFromKey,
@@ -248,12 +249,18 @@ export type SearchOpts = {
 
 export type SearchHit = {
   node: VertexNode;
-  matchedIn: "name" | "description" | "notes";
+  matchedIn: "name" | "description" | "notes" | "attachment";
+  attachment?: { id: string; filename: string }; // set when matchedIn is "attachment"
 };
 
-const MATCH_RANK: Record<SearchHit["matchedIn"], number> = { name: 0, description: 1, notes: 2 };
+const MATCH_RANK: Record<SearchHit["matchedIn"], number> = {
+  name: 0,
+  description: 1,
+  notes: 2,
+  attachment: 3,
+};
 
-// Matches name > description > meeting notes, and reports where each node matched.
+// Matches name > description > meeting notes > attachment text, and reports where each node matched.
 export const searchNodeHits = async (
   userId: string,
   opts: SearchOpts,
@@ -261,14 +268,31 @@ export const searchNodeHits = async (
   const { query, type, include_archived = false } = opts;
   const needle = query.toLowerCase();
   const hits: SearchHit[] = [];
+  const nodes = await listNodes(userId);
+  const eligible = (n: VertexNode): boolean =>
+    (include_archived || n.status !== "archived") && (!type || n.type === type);
 
-  for (const n of await listNodes(userId)) {
-    if (!include_archived && n.status === "archived") continue;
-    if (type && n.type !== type) continue;
+  for (const n of nodes) {
+    if (!eligible(n)) continue;
     if (n.name.toLowerCase().includes(needle)) hits.push({ node: n, matchedIn: "name" });
     else if (n.description.toLowerCase().includes(needle)) hits.push({ node: n, matchedIn: "description" });
     else if (n.type === "meeting" && n.fields.notes?.toLowerCase().includes(needle)) {
       hits.push({ node: n, matchedIn: "notes" });
+    }
+  }
+
+  // Attachment text: credit each node the file hangs on that didn't already match.
+  if (needle) {
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const matched = new Set(hits.map((h) => h.node.id));
+    for (const att of await listAllAttachments(userId)) {
+      if (!att.extractedText?.toLowerCase().includes(needle)) continue;
+      for (const nodeId of att.nodeIds) {
+        const n = byId.get(nodeId);
+        if (!n || matched.has(nodeId) || !eligible(n)) continue;
+        matched.add(nodeId);
+        hits.push({ node: n, matchedIn: "attachment", attachment: { id: att.id, filename: att.filename } });
+      }
     }
   }
 

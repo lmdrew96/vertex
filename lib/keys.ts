@@ -39,3 +39,18 @@ export const retiredTokenKey = (token: string) =>
 
 export const rateKey = (scope: string, id: string) =>
   `vertex:rl:${scope}:${id}`;
+
+// ── Attachments (files hang on nodes; never nodes themselves) ────────────────
+
+export const attKey = (userId: string, attId: string) =>
+  `vertex:att:${userId}:${attId}`;
+
+export const nodeAttsKey = (userId: string, nodeId: string) =>
+  `vertex:atts:node:${userId}:${nodeId}`;
+
+export const allAttsKey = (userId: string) =>
+  `vertex:atts:all:${userId}`;
+
+// Upload requested but not yet confirmed. Expires, so abandoned uploads never show up on a node.
+export const pendingUploadKey = (userId: string, attId: string) =>
+  `vertex:attupload:${userId}:${attId}`;

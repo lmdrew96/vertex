@@ -110,3 +110,21 @@ export type EdgeCreateInput = {
   evidence?: string;
   notes?: string;
 };
+
+// ── Attachments ──────────────────────────────────────────────────────────────
+
+export type ExtractStatus = "pending" | "done" | "failed" | "provided";
+
+export interface Attachment {
+  id: string; // uuid
+  nodeIds: string[]; // ≥1; a file can hang on several nodes
+  filename: string;
+  contentType: string;
+  size: number;
+  r2Key: string;
+  caption?: string;
+  extractedText?: string;
+  extractStatus: ExtractStatus;
+  extractError?: string;
+  createdAt: string;
+}

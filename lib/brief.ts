@@ -1,3 +1,4 @@
+import { listAllAttachments, listNodeAttachments, summarize, type AttachmentSummary } from "./attachments";
 import { getEdgesFrom, getEdgesTo } from "./edges";
 import { listNodes } from "./nodes";
 import type { Edge, MeetingNode, VertexNode } from "./types";
@@ -81,7 +82,13 @@ export type BriefResult =
       status: "ok";
       node: VertexNode;
       lastContact: string | null;
-      recentMeetings: Array<{ id: string; name: string; date: string; notesExcerpt?: string }>;
+      recentMeetings: Array<{
+        id: string;
+        name: string;
+        date: string;
+        notesExcerpt?: string;
+        attachments: AttachmentSummary[];
+      }>;
       people: Array<{ id: string; name: string; role?: string; affiliation?: string; links: string[] }>;
       groups: Array<{ id: string; name: string; kind?: string; links: string[] }>;
       topics: Array<{ id: string; name: string; links: string[] }>;
@@ -136,6 +143,7 @@ export const brief = async (
           ).values(),
         ].sort(byDateDesc);
   const recent = meetings.slice(0, limitMeetings);
+  const recentAttachments = await Promise.all(recent.map((m) => listNodeAttachments(userId, m.id)));
 
   const people = new LinkMap();
   const groups = new LinkMap();
@@ -168,11 +176,12 @@ export const brief = async (
     status: "ok",
     node: root,
     lastContact: meetings[0]?.fields.date ?? null,
-    recentMeetings: recent.map((m) => ({
+    recentMeetings: recent.map((m, i) => ({
       id: m.id,
       name: m.name,
       date: m.fields.date,
       ...(m.fields.notes ? { notesExcerpt: excerpt(m.fields.notes) } : {}),
+      attachments: recentAttachments[i].map(summarize),
     })),
     people: people.list().map(({ node, links }) => ({
       id: node.id,
@@ -269,7 +278,24 @@ export const whoKnows = async (userId: string, query: string): Promise<WhoKnowsR
     }
   }
 
-  // 3. The person's own profile mentions it (description, role, affiliation, how we met).
+  // 3. Attachment text: on a meeting → its attendees; on a person → that person.
+  for (const att of await listAllAttachments(userId)) {
+    if (!att.extractedText?.toLowerCase().includes(needle)) continue;
+    for (const nodeId of att.nodeIds) {
+      const host = byId.get(nodeId);
+      if (!host || host.status !== "active") continue;
+      if (host.type === "person") credit(host, "mentioned", `their file ${att.filename} mentions it`);
+      if (host.type === "meeting") {
+        for (const a of await getEdgesTo(userId, host.id)) {
+          if (a.type === "attended") {
+            credit(byId.get(a.from), "mentioned", `mentioned in ${att.filename} from ${host.name}`);
+          }
+        }
+      }
+    }
+  }
+
+  // 4. The person's own profile mentions it (description, role, affiliation, how we met).
   for (const p of active) {
     if (p.type !== "person") continue;
     const profile = [p.description, p.fields?.role, p.fields?.affiliation, p.fields?.howWeMet]

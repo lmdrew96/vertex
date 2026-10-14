@@ -17,7 +17,7 @@ Vertex is Nae's **people graph**: an MCP server and web graph browser for her ne
 - **Language:** TypeScript, strict mode
 - **Framework:** Next.js (app router)
 - **Runtime:** Vercel edge (`export const runtime = "edge"` on the MCP route and graph page). A Cloudflare Workers migration is pending as its own patch.
-- **Storage:** Upstash Redis via `@upstash/redis` (its own DB, named "Vertex")
+- **Storage:** Upstash Redis via `@upstash/redis` (its own DB, named "Vertex"). Files go in the private Cloudflare R2 bucket `vertex`, reached through `aws4fetch` (SigV4 over fetch, edge/Workers-safe; no AWS SDK).
 - **Auth:** email + password accounts, ported from Tangle (`lib/auth.ts`, `app/api/auth/route.ts` on the nodejs runtime). See "Accounts and tokens" below.
 - **MCP protocol:** Hand-rolled JSON-RPC 2.0. **No `@modelcontextprotocol/sdk`.**
 - **Graph UI:** `@xyflow/react`
@@ -57,6 +57,8 @@ lib/
   meetings.ts               # logMeeting(): vtx_meeting_log, reused by the web UI's "Log a meeting"
   brief.ts                  # brief() + whoKnows(): vtx_brief, vtx_who_knows
   auth.ts                   # PBKDF2 accounts, sessions, rate limits, token → graph resolution
+  r2.ts                     # Presigned PUT/GET, HEAD, DELETE against the private R2 bucket
+  attachments.ts            # Attachment upload flow, link/delete, listing
   graph.ts                  # BFS traversal + Mermaid render + node-with-edges hydration
   *.test.ts                 # Unit tests
 ```
@@ -125,9 +127,9 @@ Nodes get slugs (`"Art Trembanis"` → `art-trembanis`, then `-2`, `-3` on colli
 
 ### Tools
 
-All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`, `vtx_brief`, `vtx_who_knows`. Planned (see the spec): the `vtx_attachment_*` tools. When attachments land, wire their previews into `brief` and their `extractedText` into `searchNodeHits` and `whoKnows`.
+All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`, `vtx_brief`, `vtx_who_knows`, `vtx_attachment_request_upload`, `vtx_attachment_confirm`, `vtx_attachment_get`, `vtx_attachment_link`, `vtx_attachment_delete`.
 
-`vtx_node_search` matches name > description > meeting notes and reports `matchedIn`. The UI's `searchNodes` wraps the same logic and returns plain nodes.
+`vtx_node_search` matches name > description > meeting notes > attachment text and reports `matchedIn`. The UI's `searchNodes` wraps the same logic and returns plain nodes.
 
 `vtx_who_knows` ranks `can_help_with` > `involved_in` > `mentioned`. A mention is attending a meeting about a matched topic, meeting notes that contain the query, or the person's own profile (description, role, affiliation, howWeMet).
 
@@ -143,6 +145,17 @@ All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`,
 
 A meeting needs at least one attendee or a group, so it can't be born an orphan.
 
+### Attachments (`lib/attachments.ts`)
+
+Files hang on one or more nodes and are never nodes themselves. Keys: `vertex:att:{graphId}:{attId}` (record), `vertex:atts:node:{graphId}:{nodeId}` and `vertex:atts:all:{graphId}` (SETs), and `vertex:attupload:{graphId}:{attId}` (a pending upload, 1-hour TTL). Object key: `vertex/{graphId}/{attId}/{safeFilename}`.
+
+The flow:
+1. `request_upload` validates the type (jpeg/png/webp/pdf/docx/txt/md; HEIC rejected) and size (≤10 MB) and checks the nodes exist. It returns a 15-minute presigned PUT with Content-Type signed in.
+2. The client PUTs the bytes.
+3. `confirm` HEAD-checks the real type and size (a mismatch is deleted) and writes the record. Passed `extracted_text` is saved as `"provided"`; otherwise the record stays `"pending"` until the extraction patch.
+
+Delete removes the R2 object first, then the record. Archiving a node leaves its files alone. Records never store or return a public URL; every read goes through a 1-hour presigned GET.
+
 ---
 
 ## Environment variables
@@ -150,7 +163,13 @@ A meeting needs at least one attendee or a group, so it can't be born an orphan.
 ```
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
+R2_ACCOUNT_ID=          # Cloudflare account ID
+R2_ACCESS_KEY_ID=       # R2 API token scoped to the `vertex` bucket (Object Read & Write)
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET_NAME=vertex
 ```
+
+Without the R2 vars, the attachment tools return a clear "not set up" error and everything else keeps working.
 
 Set these in `.env.local` for local dev and in Vercel project settings for production.
 

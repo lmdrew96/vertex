@@ -1,6 +1,17 @@
 import { deleteEdge, createEdge } from "./edges";
 import { graphQuery, graphRender, getNodeWithEdges } from "./graph";
+import {
+  ALLOWED_TYPES,
+  confirmUpload,
+  deleteAttachment,
+  getAttachmentWithUrl,
+  linkAttachment,
+  listNodeAttachments,
+  requestUpload,
+  summarize,
+} from "./attachments";
 import { brief, whoKnows } from "./brief";
+import { R2NotConfiguredError } from "./r2";
 import { logMeeting } from "./meetings";
 import {
   archiveNode,
@@ -104,7 +115,7 @@ export const TOOLS = [
   {
     name: "vtx_node_get",
     description:
-      "Fetch a single node (including its type-specific fields) plus all its edges (both directions). Accepts node ID or name (fuzzy match).",
+      "Fetch a single node (including its type-specific fields), all its edges (both directions), and its attachments (metadata + short textPreview; use vtx_attachment_get for the full text and a download link). Accepts node ID or name (fuzzy match).",
     inputSchema: {
       type: "object",
       properties: {
@@ -144,7 +155,7 @@ export const TOOLS = [
   {
     name: "vtx_node_search",
     description:
-      "Case-insensitive substring search across node names, descriptions, and meeting notes. Ranked name > description > notes; each result says where it matched (matchedIn).",
+      "Case-insensitive substring search across node names, descriptions, meeting notes, and attachment text. Ranked name > description > notes > attachment; each result says where it matched (matchedIn, plus the file for attachment matches).",
     inputSchema: {
       type: "object",
       properties: {
@@ -295,11 +306,80 @@ export const TOOLS = [
       required: ["query"],
     },
   },
+  {
+    name: "vtx_attachment_request_upload",
+    description:
+      `Step 1 of attaching a file (image, PDF, DOCX, text, markdown; max 10 MB) to one or more nodes. Files are attachments, never nodes. Returns attachment_id and a presigned upload_url (valid 15 minutes). Step 2: PUT the raw bytes to upload_url with header "Content-Type" exactly equal to content_type. Step 3: call vtx_attachment_confirm. Allowed types: ${ALLOWED_TYPES.join(", ")}. HEIC/HEIF (iPhone photos) is rejected, so convert to JPEG first.`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        node_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "Exact node IDs to attach the file to (at least one).",
+        },
+        filename: { type: "string", description: 'Original filename, e.g. "psac-agenda.pdf".' },
+        content_type: { type: "string", description: 'MIME type, e.g. "application/pdf".' },
+        size: { type: "number", description: "File size in bytes." },
+        caption: { type: "string", description: "Optional short caption." },
+      },
+      required: ["node_ids", "filename", "content_type", "size"],
+    },
+  },
+  {
+    name: "vtx_attachment_confirm",
+    description:
+      "Step 3 of attaching a file, after the bytes are PUT to upload_url. Checks the stored file's real type and size, then saves the attachment. If you've already read the file in chat, pass its full text as extracted_text (handwriting transcribed, nothing summarized). That makes it searchable right away, with no server-side extraction. Confirming twice is harmless.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        attachment_id: { type: "string" },
+        extracted_text: {
+          type: "string",
+          description: "Optional full text of the file (stored up to 50k characters).",
+        },
+      },
+      required: ["attachment_id"],
+    },
+  },
+  {
+    name: "vtx_attachment_get",
+    description:
+      "Get one attachment: metadata, its full extracted text, and a download URL that works for 1 hour.",
+    inputSchema: {
+      type: "object",
+      properties: { attachment_id: { type: "string" } },
+      required: ["attachment_id"],
+    },
+  },
+  {
+    name: "vtx_attachment_link",
+    description:
+      "Hang an existing attachment on more nodes, or take it off some. It must stay on at least one node.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        attachment_id: { type: "string" },
+        add_node_ids: { type: "array", items: { type: "string" } },
+        remove_node_ids: { type: "array", items: { type: "string" } },
+      },
+      required: ["attachment_id"],
+    },
+  },
+  {
+    name: "vtx_attachment_delete",
+    description: "Permanently delete an attachment: the stored file first, then its record.",
+    inputSchema: {
+      type: "object",
+      properties: { attachment_id: { type: "string" } },
+      required: ["attachment_id"],
+    },
+  },
 ] as const;
 
 export const SERVER_INFO = {
   name: "vertex-mcp",
-  version: "1.4.0",
+  version: "1.5.0",
   protocolVersion: "2024-11-05",
 };
 
@@ -399,7 +479,8 @@ export const dispatchTool = async (
           `Node '${id}' not found. Use vtx_node_search to find the right ID.`,
         );
       }
-      return textContent(result);
+      const attachments = (await listNodeAttachments(userId, result.node.id)).map(summarize);
+      return textContent({ ...result, attachments });
     }
 
     case "vtx_node_update": {
@@ -596,7 +677,75 @@ export const dispatchTool = async (
       return textContent(await whoKnows(userId, query));
     }
 
+    case "vtx_attachment_request_upload":
+    case "vtx_attachment_confirm":
+    case "vtx_attachment_get":
+    case "vtx_attachment_link":
+    case "vtx_attachment_delete":
+      return attachmentTool(name, args, userId);
+
     default:
       throw new ToolError(-32601, `Unknown tool: ${name}`);
+  }
+};
+
+// ── Attachment tools ─────────────────────────────────────────────────────────
+
+const attachmentTool = async (name: string, args: ToolArgs, userId: string): Promise<ToolResult> => {
+  const attachmentId = asString(args.attachment_id);
+  if (name !== "vtx_attachment_request_upload" && !attachmentId) {
+    throw new ToolError(-32602, `${name} requires attachment_id`);
+  }
+  try {
+    switch (name) {
+      case "vtx_attachment_request_upload": {
+        const nodeIds = asStringArray(args.node_ids);
+        const filename = asString(args.filename);
+        const contentType = asString(args.content_type);
+        const size = asNumber(args.size);
+        if (!nodeIds || !filename || !contentType || size === undefined) {
+          throw new ToolError(-32602, `${name} requires node_ids, filename, content_type, size`);
+        }
+        const r = await requestUpload(userId, {
+          nodeIds,
+          filename,
+          contentType,
+          size,
+          caption: asString(args.caption),
+        });
+        return textContent({
+          attachment_id: r.attachmentId,
+          upload_url: r.uploadUrl,
+          expires_at: r.expiresAt,
+          next: `PUT the file bytes to upload_url with header "Content-Type: ${r.contentType}", then call vtx_attachment_confirm with attachment_id.`,
+        });
+      }
+      case "vtx_attachment_confirm": {
+        const att = await confirmUpload(userId, attachmentId!, asString(args.extracted_text));
+        return textContent({ attachment: summarize(att) });
+      }
+      case "vtx_attachment_get": {
+        const att = await getAttachmentWithUrl(userId, attachmentId!);
+        if (!att) throw new ToolError(-32602, `Attachment '${attachmentId}' not found.`);
+        const { r2Key: _r2Key, ...rest } = att;
+        return textContent(rest);
+      }
+      case "vtx_attachment_link": {
+        const att = await linkAttachment(userId, attachmentId!, {
+          add: asStringArray(args.add_node_ids),
+          remove: asStringArray(args.remove_node_ids),
+        });
+        return textContent({ attachment: summarize(att) });
+      }
+      default: {
+        const att = await deleteAttachment(userId, attachmentId!);
+        if (!att) throw new ToolError(-32602, `Attachment '${attachmentId}' not found.`);
+        return textContent(`Deleted attachment: ${att.filename} (${att.id})`);
+      }
+    }
+  } catch (e) {
+    if (e instanceof ToolError) throw e;
+    if (e instanceof R2NotConfiguredError) throw new ToolError(-32603, e.message);
+    throw new ToolError(-32602, e instanceof Error ? e.message : `${name} failed`);
   }
 };
