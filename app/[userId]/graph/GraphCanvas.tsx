@@ -15,21 +15,23 @@ import type { Subgraph } from "@/lib/graph";
 import { graphQueryAction } from "./actions";
 
 const NODE_TYPE_COLOR: Record<NodeType, string> = {
-  concept: "var(--color-teal-deep)",
   person: "var(--color-gold)",
-  work: "var(--color-mint)",
-  claim: "var(--color-olive)",
-  question: "var(--color-purple)",
+  group: "var(--color-teal-deep)",
+  meeting: "var(--color-mint)",
+  topic: "var(--color-purple)",
 };
 
 const EDGE_TYPE_STYLE: Record<
   EdgeType,
   { stroke: string; strokeWidth: number; dashed?: boolean; arrow?: boolean }
 > = {
-  contradicts: { stroke: "var(--color-gold)", strokeWidth: 3 },
-  tension_with: { stroke: "var(--color-gold)", strokeWidth: 2, dashed: true },
-  evidenced_by: { stroke: "var(--color-mint)", strokeWidth: 2 },
-  instance_of: { stroke: "var(--color-teal-deep)", strokeWidth: 2, arrow: true },
+  member_of: { stroke: "var(--color-teal-deep)", strokeWidth: 2, arrow: true },
+  attended: { stroke: "var(--color-mint)", strokeWidth: 1.5 },
+  held_by: { stroke: "var(--color-teal-deep)", strokeWidth: 1.5, dashed: true },
+  about: { stroke: "var(--color-purple)", strokeWidth: 1.5, dashed: true },
+  involved_in: { stroke: "var(--color-purple)", strokeWidth: 2 },
+  can_help_with: { stroke: "var(--color-gold)", strokeWidth: 2.5, arrow: true },
+  introduced: { stroke: "var(--color-gold)", strokeWidth: 2, dashed: true, arrow: true },
   connects_to: { stroke: "var(--color-lavender)", strokeWidth: 1.5 },
 };
 

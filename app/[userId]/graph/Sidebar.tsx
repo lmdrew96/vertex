@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { NODE_TYPES, type NodeType, type VertexNode } from "@/lib/types";
 import { searchNodesAction } from "./actions";
 
-const DEFAULT_DOMAIN_TAG = "domain:sla";
 
 const s = {
   sidebar: {
@@ -153,9 +152,7 @@ export function Sidebar({
 }: SidebarProps) {
   const [query, setQuery] = useState("");
   const [type, setType] = useState<NodeType | "">("");
-  const [selectedTags, setSelectedTags] = useState<string[]>(() =>
-    allTags.includes(DEFAULT_DOMAIN_TAG) ? [DEFAULT_DOMAIN_TAG] : [],
-  );
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [results, setResults] = useState(initialNodes);
   const [orphansOpen, setOrphansOpen] = useState(true);
 

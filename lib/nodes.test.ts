@@ -60,6 +60,9 @@ import {
   getAllTags,
   getNode,
   getOrphanIds,
+  isValidDate,
+  meetingName,
+  parseFields,
   searchNodes,
   uniqueSlug,
   updateNode,
@@ -111,7 +114,7 @@ describe("uniqueSlug", () => {
 describe("createNode", () => {
   it("persists the node, adds to all-nodes set, adds to orphans set", async () => {
     const node = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Sacred Edges",
       description: "A core concept in Vertexism.",
       tags: ["vertexism"],
@@ -142,7 +145,7 @@ describe("createNode", () => {
 describe("updateNode", () => {
   it("updates fields and bumps updatedAt", async () => {
     const node = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Edge State",
       description: "Original description.",
     });
@@ -167,7 +170,7 @@ describe("updateNode", () => {
 describe("archiveNode", () => {
   it("sets status to archived", async () => {
     const node = await createNode(USER, {
-      type: "claim",
+      type: "group",
       name: "Test Claim",
       description: "A claim.",
     });
@@ -184,7 +187,7 @@ describe("archiveNode", () => {
 describe("searchNodes", () => {
   it("matches substrings in name (case-insensitive)", async () => {
     const target = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Sacred Edges",
       description: "An idea.",
     });
@@ -201,7 +204,7 @@ describe("searchNodes", () => {
 
   it("matches substrings in description", async () => {
     const target = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Continuity",
       description: "About Vertexism and flow.",
     });
@@ -212,12 +215,12 @@ describe("searchNodes", () => {
 
   it("ranks name matches above description-only matches", async () => {
     const nameMatch = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Flow State",
       description: "Unrelated.",
     });
     const descMatch = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Other Concept",
       description: "About flow and continuity.",
     });
@@ -229,7 +232,7 @@ describe("searchNodes", () => {
 
   it("filters by node type", async () => {
     await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Flow Concept",
       description: "A concept.",
     });
@@ -246,7 +249,7 @@ describe("searchNodes", () => {
 
   it("excludes archived nodes by default", async () => {
     const node = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Old Idea",
       description: "An archived concept.",
     });
@@ -266,7 +269,7 @@ describe("searchNodes", () => {
 describe("autoArchiveStaleOrphans", () => {
   it("archives orphan nodes older than 7 days and returns messages", async () => {
     const node = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Stale Idea",
       description: "Never connected.",
     });
@@ -286,7 +289,7 @@ describe("autoArchiveStaleOrphans", () => {
 
   it("does not archive orphans within 7 days", async () => {
     await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Fresh Idea",
       description: "Just created.",
     });
@@ -304,13 +307,13 @@ describe("autoArchiveStaleOrphans", () => {
 describe("getAllTags", () => {
   it("returns distinct, sorted tags across all nodes", async () => {
     await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "A",
       description: "d",
       tags: ["domain:sla", "origin:nae"],
     });
     await createNode(USER, {
-      type: "claim",
+      type: "group",
       name: "B",
       description: "d",
       tags: ["domain:sla", "origin:literature"],
@@ -328,12 +331,101 @@ describe("getAllTags", () => {
 describe("getOrphanIds", () => {
   it("returns node ids with no edges", async () => {
     const node = await createNode(USER, {
-      type: "question",
+      type: "topic",
       name: "Unanswered Question",
       description: "Still isolated.",
     });
 
     const orphans = await getOrphanIds(USER);
     expect(orphans).toContain(node.id);
+  });
+});
+
+describe("isValidDate", () => {
+  it("accepts real YYYY-MM-DD dates", () => {
+    expect(isValidDate("2026-10-14")).toBe(true);
+    expect(isValidDate("2028-02-29")).toBe(true);
+  });
+
+  it("rejects malformed or impossible dates", () => {
+    expect(isValidDate("2026-10-14T10:00:00Z")).toBe(false);
+    expect(isValidDate("10/14/2026")).toBe(false);
+    expect(isValidDate("2026-02-30")).toBe(false);
+  });
+});
+
+describe("parseFields", () => {
+  it("requires date on meetings", () => {
+    expect(() => parseFields("meeting", undefined)).toThrow(/fields.date/);
+    expect(() => parseFields("meeting", { notes: "x" })).toThrow(/fields.date/);
+  });
+
+  it("rejects fields that belong to another type", () => {
+    expect(() => parseFields("person", { kind: "club" })).toThrow(/Allowed: role/);
+    expect(() => parseFields("topic", { role: "x" })).toThrow(/no extra fields/);
+  });
+
+  it("validates group kind and follow-up IDs", () => {
+    expect(() => parseFields("group", { kind: "cult" })).toThrow(/council/);
+    expect(() =>
+      parseFields("meeting", { date: "2026-10-14", followUpTaskIds: "abc" }),
+    ).toThrow(/followUpTaskIds/);
+  });
+
+  it("allows null to clear a key only on partial updates, never date", () => {
+    expect(parseFields("person", { role: null }, true)).toEqual({ role: null });
+    expect(() => parseFields("person", { role: null })).toThrow(/cannot be cleared/);
+    expect(() => parseFields("meeting", { date: null }, true)).toThrow(/cannot be cleared/);
+  });
+});
+
+describe("meeting nodes", () => {
+  it("auto-names from the date when no name is given", async () => {
+    const node = await createNode(USER, { type: "meeting", fields: { date: "2026-10-14" } });
+    expect(node.name).toBe("2026-10-14");
+    expect(node.id).toBe("2026-10-14");
+    expect(node.description).toBe("");
+  });
+
+  it("formats context into the name and slugs it cleanly", async () => {
+    const name = meetingName("2026-10-14", "PSAC");
+    expect(name).toBe("2026-10-14 · PSAC");
+    const node = await createNode(USER, { type: "meeting", name, fields: { date: "2026-10-14" } });
+    expect(node.id).toBe("2026-10-14-psac");
+  });
+
+  it("stores fields and keeps them through an update", async () => {
+    const node = await createNode(USER, {
+      type: "meeting",
+      fields: { date: "2026-10-14", notes: "**Pilot** idea", followUpTaskIds: ["t1"] },
+    });
+    const updated = await updateNode(USER, node.id, { fields: { ccEventId: "evt_1" } });
+    expect(updated?.fields).toEqual({
+      date: "2026-10-14",
+      notes: "**Pilot** idea",
+      followUpTaskIds: ["t1"],
+      ccEventId: "evt_1",
+    });
+  });
+});
+
+describe("person fields", () => {
+  it("omits fields when none are given", async () => {
+    const node = await createNode(USER, { type: "person", name: "Art Trembanis" });
+    expect(node.fields).toBeUndefined();
+  });
+
+  it("merges and clears fields on update", async () => {
+    const node = await createNode(USER, {
+      type: "person",
+      name: "Art Trembanis",
+      fields: { role: "Professor", affiliation: "UD" },
+    });
+    const updated = await updateNode(USER, node.id, { fields: { role: null, email: "a@udel.edu" } });
+    expect(updated?.fields).toEqual({ affiliation: "UD", email: "a@udel.edu" });
+  });
+
+  it("rejects a name with no letters or numbers", async () => {
+    await expect(createNode(USER, { type: "person", name: "!!!" })).rejects.toThrow(/letter or number/);
   });
 });

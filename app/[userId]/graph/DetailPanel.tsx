@@ -151,11 +151,10 @@ const s = {
 };
 
 const NODE_TYPE_COLOR: Record<string, string> = {
-  concept: "var(--color-teal-deep)",
   person: "var(--color-gold)",
-  work: "var(--color-mint)",
-  claim: "var(--color-olive)",
-  question: "var(--color-purple)",
+  group: "var(--color-teal-deep)",
+  meeting: "var(--color-mint)",
+  topic: "var(--color-purple)",
 };
 
 const truncate = (text: string, max = 90) =>

@@ -221,8 +221,8 @@ export default function Home() {
           <h1 style={s.h1}>Vertex</h1>
           <p style={s.tagline}>Vertexism knowledge graph MCP</p>
           <p style={s.p}>
-            A graph-structured idea database. Nodes are things — concepts, people, works,
-            claims, questions. Edges are how they relate. Meaning lives in the connections.
+            Your network as a graph. Nodes are people, groups, meetings, and topics. Edges are
+            how they relate — who belongs where, who introduced whom, what came up when.
           </p>
         </div>
 

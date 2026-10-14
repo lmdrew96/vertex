@@ -63,7 +63,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-const mkNode = (name: string, type: "concept" | "person" | "work" = "concept") =>
+const mkNode = (name: string, type: "topic" | "person" | "group" = "topic") =>
   createNode(USER, { type, name, description: `${name} description.` });
 
 describe("graphQuery", () => {
@@ -128,7 +128,7 @@ describe("graphQuery", () => {
     const b = await mkNode("B");
 
     await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
-    await createEdge(USER, { from: b.id, to: a.id, type: "tension_with" });
+    await createEdge(USER, { from: b.id, to: a.id, type: "connects_to" });
 
     const result = await graphQuery(USER, { node_id: a.id, depth: 3 });
 
@@ -138,17 +138,17 @@ describe("graphQuery", () => {
   });
 
   it("filters by edge_types", async () => {
-    const a = await mkNode("A");
-    const b = await mkNode("B");
+    const a = await mkNode("A", "person");
+    const b = await mkNode("B", "group");
     const c = await mkNode("C");
 
-    await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
-    await createEdge(USER, { from: a.id, to: c.id, type: "tension_with" });
+    await createEdge(USER, { from: a.id, to: b.id, type: "member_of" });
+    await createEdge(USER, { from: a.id, to: c.id, type: "can_help_with" });
 
     const result = await graphQuery(USER, {
       node_id: a.id,
       depth: 1,
-      edge_types: ["connects_to"],
+      edge_types: ["member_of"],
     });
 
     const ids = result.nodes.map((n) => n.id);
@@ -178,7 +178,7 @@ describe("graphQuery", () => {
 
   it("auto-archives stale orphans and reports them", async () => {
     const orphan = await createNode(USER, {
-      type: "concept",
+      type: "topic",
       name: "Stale Orphan",
       description: "Never connected.",
     });
@@ -212,14 +212,14 @@ describe("graphRender", () => {
   it("produces a valid Mermaid graph LR string", async () => {
     const a = await mkNode("Sacred Edges");
     const b = await mkNode("Whitman", "person");
-    await createEdge(USER, { from: b.id, to: a.id, type: "instance_of" });
+    await createEdge(USER, { from: b.id, to: a.id, type: "can_help_with" });
 
     const { diagram } = await graphRender(USER, { node_id: a.id, depth: 1 });
 
     expect(diagram).toMatch(/^graph LR/);
     expect(diagram).toContain(`${a.id}[`);
     expect(diagram).toContain(`${b.id}[`);
-    expect(diagram).toContain(`|"instance_of"|`);
+    expect(diagram).toContain(`|"can_help_with"|`);
     expect(diagram).toContain("Sacred Edges");
     expect(diagram).toContain("(person)");
   });
@@ -232,7 +232,7 @@ describe("getNodeWithEdges", () => {
     const downstream = await mkNode("Downstream");
 
     await createEdge(USER, { from: upstream.id, to: center.id, type: "connects_to" });
-    await createEdge(USER, { from: center.id, to: downstream.id, type: "evidenced_by" });
+    await createEdge(USER, { from: center.id, to: downstream.id, type: "connects_to" });
 
     const result = await getNodeWithEdges(USER, center.id);
 
@@ -248,7 +248,7 @@ describe("getNodeWithEdges", () => {
   });
 
   it("resolves by fuzzy name", async () => {
-    await mkNode("Song of Myself", "work");
+    await mkNode("Song of Myself", "group");
     const result = await getNodeWithEdges(USER, "song");
     expect(result?.node.name).toBe("Song of Myself");
   });

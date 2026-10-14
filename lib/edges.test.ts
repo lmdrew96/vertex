@@ -50,7 +50,15 @@ const { kv, sets, fakeRedis } = vi.hoisted(() => {
 
 vi.mock("./redis", () => ({ redis: fakeRedis }));
 
-import { createEdge, deleteEdge, getEdge, getEdgesFrom, getEdgesTo } from "./edges";
+import {
+  createEdge,
+  deleteEdge,
+  edgeTypesFor,
+  getEdge,
+  getEdgesFrom,
+  getEdgesTo,
+  validateEdgePair,
+} from "./edges";
 import { createNode, getNode } from "./nodes";
 import { adjFromKey, adjToKey, orphansKey } from "./keys";
 
@@ -63,7 +71,7 @@ beforeEach(() => {
 });
 
 const mkNode = (name: string) =>
-  createNode(USER, { type: "concept", name, description: `${name} description.` });
+  createNode(USER, { type: "topic", name, description: `${name} description.` });
 
 describe("createEdge", () => {
   it("persists the edge and updates adjacency indices", async () => {
@@ -88,7 +96,7 @@ describe("createEdge", () => {
     expect(sets.get(orphansKey(USER))?.has(a.id)).toBe(true);
     expect(sets.get(orphansKey(USER))?.has(b.id)).toBe(true);
 
-    await createEdge(USER, { from: a.id, to: b.id, type: "tension_with" });
+    await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
 
     expect(sets.get(orphansKey(USER))?.has(a.id)).toBe(false);
     expect(sets.get(orphansKey(USER))?.has(b.id)).toBe(false);
@@ -99,7 +107,7 @@ describe("createEdge", () => {
     const b = await mkNode("Target");
     expect(a.connectedAt).toBeUndefined();
 
-    await createEdge(USER, { from: a.id, to: b.id, type: "instance_of" });
+    await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
 
     const updatedA = await getNode(USER, a.id);
     const updatedB = await getNode(USER, b.id);
@@ -148,7 +156,7 @@ describe("createEdge", () => {
     const { edge } = await createEdge(USER, {
       from: a.id,
       to: b.id,
-      type: "evidenced_by",
+      type: "connects_to",
       evidence: "See chapter 3.",
       notes: "Important connection.",
     });
@@ -219,7 +227,7 @@ describe("getEdgesFrom / getEdgesTo", () => {
   it("returns edges in the correct direction", async () => {
     const a = await mkNode("A");
     const b = await mkNode("B");
-    const { edge } = await createEdge(USER, { from: a.id, to: b.id, type: "contradicts" });
+    const { edge } = await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
 
     const from = await getEdgesFrom(USER, a.id);
     const to = await getEdgesTo(USER, b.id);
@@ -232,5 +240,31 @@ describe("getEdgesFrom / getEdgesTo", () => {
     const a = await mkNode("Isolated");
     expect(await getEdgesFrom(USER, a.id)).toHaveLength(0);
     expect(await getEdgesTo(USER, a.id)).toHaveLength(0);
+  });
+});
+
+describe("edge pair rules", () => {
+  it("accepts a valid typed pair", async () => {
+    const person = await createNode(USER, { type: "person", name: "Art" });
+    const group = await createNode(USER, { type: "group", name: "PSAC" });
+    const { edge } = await createEdge(USER, { from: person.id, to: group.id, type: "member_of" });
+    expect(edge.type).toBe("member_of");
+  });
+
+  it("rejects a wrong pair and names what would fit", async () => {
+    const person = await createNode(USER, { type: "person", name: "Art" });
+    const group = await createNode(USER, { type: "group", name: "PSAC" });
+    await expect(
+      createEdge(USER, { from: group.id, to: person.id, type: "member_of" }),
+    ).rejects.toThrow(/member_of must go person → group; got group → person.*connects_to/);
+  });
+
+  it("lets connects_to join any pair", () => {
+    expect(() => validateEdgePair("connects_to", "meeting", "person")).not.toThrow();
+  });
+
+  it("lists every edge type that fits a pair", () => {
+    expect(edgeTypesFor("person", "topic")).toEqual(["involved_in", "can_help_with", "connects_to"]);
+    expect(edgeTypesFor("group", "topic")).toEqual(["involved_in", "connects_to"]);
   });
 });

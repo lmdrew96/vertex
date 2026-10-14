@@ -9,7 +9,14 @@ import {
   searchNodes,
   updateNode,
 } from "./nodes";
-import { EDGE_TYPES, NODE_TYPES, type EdgeType, type NodeType } from "./types";
+import {
+  EDGE_TYPES,
+  GROUP_KINDS,
+  NODE_TYPES,
+  type EdgeType,
+  type NodeCreateInput,
+  type NodeType,
+} from "./types";
 
 // ── Envelope helpers ─────────────────────────────────────────────────────────
 
@@ -38,30 +45,64 @@ const textContent = (payload: unknown) => ({
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
 
+const FIELDS_SCHEMA = {
+  type: "object",
+  description:
+    "Type-specific fields, all optional except meeting.date. person: role, affiliation, email, howWeMet. group: kind, url. meeting: date (YYYY-MM-DD, required), ccEventId, notes (markdown), followUpTaskIds (ControlledChaos task IDs). topic: none.",
+  properties: {
+    role: { type: "string", description: 'person — e.g. "AAP Director".' },
+    affiliation: { type: "string", description: "person — where they work or study." },
+    email: { type: "string", description: "person" },
+    howWeMet: { type: "string", description: "person" },
+    kind: { type: "string", enum: GROUP_KINDS, description: "group" },
+    url: { type: "string", description: "group" },
+    date: { type: "string", description: "meeting — YYYY-MM-DD." },
+    ccEventId: { type: "string", description: "meeting — ControlledChaos event ID." },
+    notes: { type: "string", description: "meeting — markdown notes." },
+    followUpTaskIds: {
+      type: "array",
+      items: { type: "string" },
+      description: "meeting — ControlledChaos task IDs for follow-ups.",
+    },
+  },
+} as const;
+
+const ORPHAN_HINT: Record<NodeType, string> = {
+  person: "add member_of (→ group), attended (→ meeting), or can_help_with (→ topic)",
+  group: "add member_of (person →) or held_by (meeting →)",
+  meeting: "add attended (person →), held_by (→ group), or about (→ topic)",
+  topic: "add about (meeting →), involved_in or can_help_with (person →)",
+};
+
 export const TOOLS = [
   {
     name: "vtx_node_create",
     description:
-      "Create a new node in the Vertexism knowledge graph. Generates a slug ID from the name. Starts as an orphan — connect it within 7 days or it will be auto-archived.",
+      "Create a node in Nae's people graph: a person, group (org/council/team/class/program), meeting, or topic. Generates a slug ID from the name. Starts as an orphan — connect it with vtx_edge_create within 7 days or it will be auto-archived.",
     inputSchema: {
       type: "object",
       properties: {
         type: { type: "string", enum: NODE_TYPES, description: "Node type." },
-        name: { type: "string", description: 'Human-readable name, e.g. "Sacred Edges".' },
-        description: { type: "string", description: "What this node is — 1-3 sentences." },
+        name: {
+          type: "string",
+          description:
+            'Human-readable name, e.g. "Art Trembanis" or "PSAC". Required except for meetings, which default to the date.',
+        },
+        description: { type: "string", description: "Optional — who or what this is, 1-3 sentences." },
         tags: {
           type: "array",
           items: { type: "string" },
-          description: 'Optional topic tags, e.g. ["vertexism", "edge-states"].',
+          description: 'Optional tags, e.g. ["ud", "mentorship"].',
         },
+        fields: FIELDS_SCHEMA,
       },
-      required: ["type", "name", "description"],
+      required: ["type"],
     },
   },
   {
     name: "vtx_node_get",
     description:
-      "Fetch a single node plus all its edges (both directions). Accepts node ID or name (fuzzy match).",
+      "Fetch a single node (including its type-specific fields) plus all its edges (both directions). Accepts node ID or name (fuzzy match).",
     inputSchema: {
       type: "object",
       properties: {
@@ -72,7 +113,8 @@ export const TOOLS = [
   },
   {
     name: "vtx_node_update",
-    description: "Update the name, description, or tags on an existing node.",
+    description:
+      "Update the name, description, tags, or type-specific fields on an existing node. Fields merge into what's there; pass null for a field to clear it (a meeting's date can't be cleared).",
     inputSchema: {
       type: "object",
       properties: {
@@ -80,6 +122,7 @@ export const TOOLS = [
         name: { type: "string" },
         description: { type: "string" },
         tags: { type: "array", items: { type: "string" } },
+        fields: FIELDS_SCHEMA,
       },
       required: ["id"],
     },
@@ -113,7 +156,7 @@ export const TOOLS = [
   {
     name: "vtx_orphans_list",
     description:
-      "Returns all nodes with no edges, sorted by days orphaned (most neglected first). Auto-archives nodes orphaned for more than 7 days. Call at the start of any Vertexism session.",
+      "Returns all nodes with no edges, sorted by days orphaned (most neglected first). Auto-archives nodes orphaned for more than 7 days.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -121,14 +164,15 @@ export const TOOLS = [
   },
   {
     name: "vtx_edge_create",
-    description: "Connect two existing nodes with a directed, typed edge.",
+    description:
+      "Connect two existing nodes with a directed, typed edge. Allowed pairs: member_of person → group; attended person → meeting; held_by meeting → group; about meeting → topic; involved_in person/group → topic; can_help_with person → topic; introduced person → person (A introduced Nae to B); connects_to any → any (say how in notes).",
     inputSchema: {
       type: "object",
       properties: {
         from: { type: "string", description: "Source node ID." },
         to: { type: "string", description: "Target node ID." },
         type: { type: "string", enum: EDGE_TYPES, description: "Relationship type." },
-        evidence: { type: "string", description: "Optional quote, citation, or rationale." },
+        evidence: { type: "string", description: "Optional source or rationale, e.g. where Nae learned this." },
         notes: { type: "string", description: "Optional free text." },
       },
       required: ["from", "to", "type"],
@@ -170,7 +214,7 @@ export const TOOLS = [
   {
     name: "vtx_graph_render",
     description:
-      "Run a BFS traversal and return the result as a Mermaid `graph LR` diagram string. Useful for pasting into Folio or a Substack draft.",
+      "Run a BFS traversal and return the result as a Mermaid `graph LR` diagram string, e.g. to show who connects to a group or topic.",
     inputSchema: {
       type: "object",
       properties: {
@@ -189,7 +233,7 @@ export const TOOLS = [
 
 export const SERVER_INFO = {
   name: "vertex-mcp",
-  version: "1.0.0",
+  version: "1.1.0",
   protocolVersion: "2024-11-05",
 };
 
@@ -258,18 +302,25 @@ export const dispatchTool = async (
   switch (name) {
     case "vtx_node_create": {
       const type = asNodeType(args.type);
-      const nodeName = asString(args.name);
-      const description = asString(args.description);
-      if (!type || !nodeName || !description) {
-        throw new ToolError(-32602, "vtx_node_create requires type, name, description");
+      if (!type) {
+        throw new ToolError(-32602, `vtx_node_create requires type: ${NODE_TYPES.join(", ")}`);
       }
-      const node = await createNode(userId, {
-        type,
-        name: nodeName,
-        description,
-        tags: asStringArray(args.tags),
-      });
-      return textContent(node);
+      try {
+        // createNode validates fields against the type at runtime.
+        const node = await createNode(userId, {
+          type,
+          name: asString(args.name),
+          description: asString(args.description),
+          tags: asStringArray(args.tags),
+          fields: args.fields,
+        } as NodeCreateInput);
+        return textContent({
+          node,
+          warning: `No edges yet — this ${type} auto-archives in 7 days unless connected. Next: ${ORPHAN_HINT[type]}.`,
+        });
+      } catch (e) {
+        throw new ToolError(-32602, e instanceof Error ? e.message : "Failed to create node");
+      }
     }
 
     case "vtx_node_get": {
@@ -288,11 +339,17 @@ export const dispatchTool = async (
     case "vtx_node_update": {
       const id = asString(args.id);
       if (!id) throw new ToolError(-32602, "vtx_node_update requires id");
-      const updated = await updateNode(userId, id, {
-        name: asString(args.name),
-        description: asString(args.description),
-        tags: asStringArray(args.tags),
-      });
+      let updated;
+      try {
+        updated = await updateNode(userId, id, {
+          name: asString(args.name),
+          description: asString(args.description),
+          tags: asStringArray(args.tags),
+          fields: args.fields as Record<string, unknown> | undefined,
+        });
+      } catch (e) {
+        throw new ToolError(-32602, e instanceof Error ? e.message : "Failed to update node");
+      }
       if (!updated) {
         throw new ToolError(
           -32602,

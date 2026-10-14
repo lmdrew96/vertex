@@ -85,9 +85,10 @@ type QuickCreateProps = {
 export function QuickCreate({ userId, nodes, onNodeCreated, onEdgeCreated }: QuickCreateProps) {
   const [tab, setTab] = useState<"closed" | "node" | "edge">("closed");
 
-  const [nodeType, setNodeType] = useState<NodeType>("concept");
+  const [nodeType, setNodeType] = useState<NodeType>("person");
   const [nodeName, setNodeName] = useState("");
   const [nodeDescription, setNodeDescription] = useState("");
+  const [meetingDate, setMeetingDate] = useState("");
   const [nodeTags, setNodeTags] = useState("");
   const [nodeError, setNodeError] = useState("");
 
@@ -101,6 +102,7 @@ export function QuickCreate({ userId, nodes, onNodeCreated, onEdgeCreated }: Qui
   const resetNodeForm = () => {
     setNodeName("");
     setNodeDescription("");
+    setMeetingDate("");
     setNodeTags("");
     setNodeError("");
   };
@@ -114,23 +116,28 @@ export function QuickCreate({ userId, nodes, onNodeCreated, onEdgeCreated }: Qui
   };
 
   const submitNode = async () => {
-    if (!nodeName.trim() || !nodeDescription.trim()) {
-      setNodeError("Name and description are required.");
+    if (nodeType === "meeting" ? !meetingDate : !nodeName.trim()) {
+      setNodeError(nodeType === "meeting" ? "Meetings need a date." : "Name is required.");
       return;
     }
     const tags = nodeTags
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
+    const base = { name: nodeName.trim(), description: nodeDescription.trim(), tags };
 
-    const node = await createNodeAction(userId, {
-      type: nodeType,
-      name: nodeName.trim(),
-      description: nodeDescription.trim(),
-      tags,
-    });
-    resetNodeForm();
-    onNodeCreated(node);
+    try {
+      const node = await createNodeAction(
+        userId,
+        nodeType === "meeting"
+          ? { ...base, type: "meeting", fields: { date: meetingDate } }
+          : { ...base, type: nodeType },
+      );
+      resetNodeForm();
+      onNodeCreated(node);
+    } catch (e) {
+      setNodeError(e instanceof Error ? e.message : "Failed to create node.");
+    }
   };
 
   const submitEdge = async () => {
@@ -192,21 +199,30 @@ export function QuickCreate({ userId, nodes, onNodeCreated, onEdgeCreated }: Qui
               </option>
             ))}
           </select>
+          {nodeType === "meeting" && (
+            <input
+              style={s.input}
+              type="date"
+              aria-label="Meeting date"
+              value={meetingDate}
+              onChange={(e) => setMeetingDate(e.target.value)}
+            />
+          )}
           <input
             style={s.input}
-            placeholder="Name"
+            placeholder={nodeType === "meeting" ? "Name (optional — defaults to the date)" : "Name"}
             value={nodeName}
             onChange={(e) => setNodeName(e.target.value)}
           />
           <textarea
             style={s.textarea}
-            placeholder="Description"
+            placeholder="Description (optional)"
             value={nodeDescription}
             onChange={(e) => setNodeDescription(e.target.value)}
           />
           <input
             style={s.input}
-            placeholder="Tags, comma-separated (e.g. domain:sla, origin:nae)"
+            placeholder="Tags, comma-separated (e.g. ud, mentorship)"
             value={nodeTags}
             onChange={(e) => setNodeTags(e.target.value)}
           />
@@ -249,7 +265,7 @@ export function QuickCreate({ userId, nodes, onNodeCreated, onEdgeCreated }: Qui
           </select>
           <textarea
             style={s.textarea}
-            placeholder="Evidence (optional)"
+            placeholder="Source (optional) — e.g. where you learned this"
             value={evidence}
             onChange={(e) => setEvidence(e.target.value)}
           />

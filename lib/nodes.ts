@@ -6,7 +6,7 @@ import {
   nodeKey,
   orphansKey,
 } from "./keys";
-import type { NodeCreateInput, NodeStatus, NodeType, NodeUpdateInput, VertexNode } from "./types";
+import { GROUP_KINDS, type NodeCreateInput, type NodeType, type NodeUpdateInput, type VertexNode } from "./types";
 
 // ── Slug generation ──────────────────────────────────────────────────────────
 
@@ -27,24 +27,108 @@ export const uniqueSlug = async (userId: string, name: string): Promise<string> 
   return `${base}-${n}`;
 };
 
+// ── Fields ───────────────────────────────────────────────────────────────────
+
+const FIELD_KEYS: Record<NodeType, string[]> = {
+  person: ["role", "affiliation", "email", "howWeMet"],
+  group: ["kind", "url"],
+  meeting: ["date", "ccEventId", "notes", "followUpTaskIds"],
+  topic: [],
+};
+
+// Calendar-valid YYYY-MM-DD. UTC here is only a validity check — the string is stored as-is.
+export const isValidDate = (value: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+};
+
+// Validates raw fields against the node type. With `partial` (updates), keys are optional
+// and `null` clears a key — except `date`, which a meeting must always have.
+export const parseFields = (
+  type: NodeType,
+  raw: unknown,
+  partial = false,
+): Record<string, unknown> | undefined => {
+  if (raw === undefined || raw === null) {
+    if (type === "meeting" && !partial) {
+      throw new Error("Meeting nodes require fields.date (YYYY-MM-DD).");
+    }
+    return undefined;
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("fields must be an object.");
+  }
+
+  const allowed = FIELD_KEYS[type];
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!allowed.includes(key)) {
+      throw new Error(
+        allowed.length > 0
+          ? `Unknown field '${key}' for a ${type} node. Allowed: ${allowed.join(", ")}.`
+          : `${type} nodes have no extra fields — use description and tags instead.`,
+      );
+    }
+    if (value === undefined) continue;
+    if (value === null) {
+      if (!partial || key === "date") throw new Error(`fields.${key} cannot be cleared.`);
+      out[key] = null;
+      continue;
+    }
+    if (key === "followUpTaskIds") {
+      if (!Array.isArray(value) || !value.every((x) => typeof x === "string")) {
+        throw new Error("fields.followUpTaskIds must be an array of ControlledChaos task IDs.");
+      }
+    } else if (typeof value !== "string") {
+      throw new Error(`fields.${key} must be a string.`);
+    }
+    if (key === "date" && !isValidDate(value as string)) {
+      throw new Error(`fields.date must be a real date in YYYY-MM-DD form; got '${value}'.`);
+    }
+    if (key === "kind" && !(GROUP_KINDS as string[]).includes(value as string)) {
+      throw new Error(`fields.kind must be one of: ${GROUP_KINDS.join(", ")}.`);
+    }
+    out[key] = value;
+  }
+
+  if (type === "meeting" && !partial && !out.date) {
+    throw new Error("Meeting nodes require fields.date (YYYY-MM-DD).");
+  }
+  return out;
+};
+
+// "{date} · {group or first attendee}", or just the date when there's no context.
+export const meetingName = (date: string, context?: string): string =>
+  context ? `${date} · ${context}` : date;
+
 // ── CRUD ─────────────────────────────────────────────────────────────────────
 
 export const createNode = async (
   userId: string,
   input: NodeCreateInput,
 ): Promise<VertexNode> => {
-  const id = await uniqueSlug(userId, input.name);
+  const fields = parseFields(input.type, "fields" in input ? input.fields : undefined);
+  const name =
+    input.name?.trim() ||
+    (input.type === "meeting" ? meetingName(fields!.date as string) : "");
+  if (!name) throw new Error("name is required.");
+  if (!generateSlug(name)) throw new Error("name must contain at least one letter or number.");
+
+  const id = await uniqueSlug(userId, name);
   const now = new Date().toISOString();
-  const node: VertexNode = {
+  const node = {
     id,
     type: input.type,
-    name: input.name,
-    description: input.description,
+    name,
+    description: input.description?.trim() ?? "",
     tags: input.tags ?? [],
     status: "active",
     createdAt: now,
     updatedAt: now,
-  };
+    ...(fields && Object.keys(fields).length > 0 ? { fields } : {}),
+  } as VertexNode;
   await Promise.all([
     redis.set(nodeKey(userId, id), node),
     redis.sadd(allNodesKey(userId), id),
@@ -93,13 +177,27 @@ export const updateNode = async (
 ): Promise<VertexNode | null> => {
   const current = await getNode(userId, nodeId);
   if (!current) return null;
-  const next: VertexNode = {
+
+  let fields = current.fields as Record<string, unknown> | undefined;
+  const parsed = parseFields(current.type, patch.fields, true);
+  if (parsed) {
+    const merged: Record<string, unknown> = { ...(fields ?? {}) };
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value === null) delete merged[key];
+      else merged[key] = value;
+    }
+    fields = Object.keys(merged).length > 0 ? merged : undefined;
+  }
+
+  const next = {
     ...current,
     name: patch.name ?? current.name,
     description: patch.description ?? current.description,
     tags: patch.tags ?? current.tags,
+    fields,
     updatedAt: new Date().toISOString(),
-  };
+  } as VertexNode;
+  if (next.fields === undefined) delete next.fields;
   await redis.set(nodeKey(userId, nodeId), next);
   return next;
 };

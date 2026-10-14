@@ -1,26 +1,57 @@
-export type NodeType = "concept" | "person" | "work" | "claim" | "question";
+export type NodeType = "person" | "group" | "meeting" | "topic";
 
 export type EdgeType =
-  | "connects_to"
-  | "tension_with"
-  | "instance_of"
-  | "contradicts"
-  | "evidenced_by";
+  | "member_of"
+  | "attended"
+  | "held_by"
+  | "about"
+  | "involved_in"
+  | "can_help_with"
+  | "introduced"
+  | "connects_to";
 
 export type NodeStatus = "active" | "archived";
 
-export const NODE_TYPES: NodeType[] = ["concept", "person", "work", "claim", "question"];
+export const NODE_TYPES: NodeType[] = ["person", "group", "meeting", "topic"];
 export const EDGE_TYPES: EdgeType[] = [
+  "member_of",
+  "attended",
+  "held_by",
+  "about",
+  "involved_in",
+  "can_help_with",
+  "introduced",
   "connects_to",
-  "tension_with",
-  "instance_of",
-  "contradicts",
-  "evidenced_by",
 ];
 
-export interface VertexNode {
+// ── Per-type fields ──────────────────────────────────────────────────────────
+
+export type GroupKind = "council" | "club" | "office" | "class" | "program";
+export const GROUP_KINDS: GroupKind[] = ["council", "club", "office", "class", "program"];
+
+export type PersonFields = {
+  role?: string;
+  affiliation?: string;
+  email?: string;
+  howWeMet?: string;
+};
+
+export type GroupFields = {
+  kind?: GroupKind;
+  url?: string;
+};
+
+export type MeetingFields = {
+  date: string; // YYYY-MM-DD, local date — never converted
+  ccEventId?: string;
+  notes?: string; // markdown
+  followUpTaskIds?: string[];
+};
+
+// ── Nodes ────────────────────────────────────────────────────────────────────
+
+type NodeBase = {
   id: string;
-  type: NodeType;
   name: string;
   description: string;
   tags: string[];
@@ -28,7 +59,16 @@ export interface VertexNode {
   createdAt: string;
   updatedAt: string;
   connectedAt?: string;
-}
+};
+
+export type PersonNode = NodeBase & { type: "person"; fields?: PersonFields };
+export type GroupNode = NodeBase & { type: "group"; fields?: GroupFields };
+export type MeetingNode = NodeBase & { type: "meeting"; fields: MeetingFields };
+export type TopicNode = NodeBase & { type: "topic"; fields?: undefined };
+
+export type VertexNode = PersonNode | GroupNode | MeetingNode | TopicNode;
+
+// ── Edges ────────────────────────────────────────────────────────────────────
 
 export interface Edge {
   id: string;
@@ -40,17 +80,27 @@ export interface Edge {
   createdAt: string;
 }
 
-export type NodeCreateInput = {
-  type: NodeType;
+// ── Inputs ───────────────────────────────────────────────────────────────────
+
+type CreateBase = {
   name: string;
-  description: string;
+  description?: string;
   tags?: string[];
 };
 
+export type NodeCreateInput =
+  | (CreateBase & { type: "person"; fields?: PersonFields })
+  | (CreateBase & { type: "group"; fields?: GroupFields })
+  // Meeting name is optional — auto-generated from the date when missing.
+  | (Omit<CreateBase, "name"> & { type: "meeting"; name?: string; fields: MeetingFields })
+  | (CreateBase & { type: "topic" });
+
+// Field updates merge into the existing fields; keys are validated against the node's type.
 export type NodeUpdateInput = {
   name?: string;
   description?: string;
   tags?: string[];
+  fields?: Record<string, unknown>;
 };
 
 export type EdgeCreateInput = {
