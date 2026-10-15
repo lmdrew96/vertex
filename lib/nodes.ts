@@ -7,7 +7,7 @@ import {
   nodeKey,
   orphansKey,
 } from "./keys";
-import { GROUP_KINDS, type NodeCreateInput, type NodeType, type NodeUpdateInput, type VertexNode } from "./types";
+import { GROUP_KINDS, MEETING_KINDS, type NodeCreateInput, type NodeType, type NodeUpdateInput, type VertexNode } from "./types";
 
 // ── Slug generation ──────────────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ export const uniqueSlug = async (userId: string, name: string): Promise<string> 
 const FIELD_KEYS: Record<NodeType, string[]> = {
   person: ["role", "affiliation", "email", "howWeMet"],
   group: ["kind", "url"],
-  meeting: ["date", "ccEventId", "notes", "followUpTaskIds"],
+  meeting: ["date", "kind", "ccEventId", "notes", "followUpTaskIds"],
   topic: [],
 };
 
@@ -92,8 +92,11 @@ export const parseFields = (
     if (key === "date" && !isValidDate(value as string)) {
       throw new Error(`fields.date must be a real date in YYYY-MM-DD form; got '${value}'.`);
     }
-    if (key === "kind" && !(GROUP_KINDS as string[]).includes(value as string)) {
-      throw new Error(`fields.kind must be one of: ${GROUP_KINDS.join(", ")}.`);
+    if (key === "kind") {
+      const kinds: string[] = type === "meeting" ? MEETING_KINDS : GROUP_KINDS;
+      if (!kinds.includes(value as string)) {
+        throw new Error(`fields.kind for a ${type} must be one of: ${kinds.join(", ")}.`);
+      }
     }
     out[key] = value;
   }

@@ -43,7 +43,7 @@ const FADED_OPACITY = 0.12;
 
 // Column per type: people | meetings | groups, then topics.
 const COLUMN: Record<NodeType, number> = { person: 0, meeting: 1, group: 2, topic: 2 };
-const COLUMN_TITLES = ["People", "Meetings", "Groups & topics"];
+const COLUMN_TITLES = ["People", "Meetings & events", "Groups & topics"];
 const COLUMN_GAP = 320;
 const ROW_GAP = 84;
 const NODE_WIDTH = 140;
@@ -178,7 +178,7 @@ function layout(subgraph: Subgraph, graph: DisplayGraph): RFNode[] {
       height,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
-      data: { label: `${truncateLabel(node.name)}\n(${node.type})` },
+      data: { label: `${truncateLabel(node.name)}\n(${node.type === "meeting" ? (node.fields.kind ?? "meeting") : node.type})` },
       style: {
         background: NODE_TYPE_COLOR[node.type],
         color: NODE_TYPE_TEXT[node.type],

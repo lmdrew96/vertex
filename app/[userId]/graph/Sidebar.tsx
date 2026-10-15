@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { NODE_TYPES, type NodeType, type VertexNode } from "@/lib/types";
 import { searchNodesAction } from "./actions";
-import { NODE_TYPE_COLOR, NODE_TYPE_TEXT } from "./typeColors";
+import { NODE_TYPE_COLOR, NODE_TYPE_LABEL, NODE_TYPE_TEXT } from "./typeColors";
 import { ThemeToggle } from "../../ThemeToggle";
 
 
@@ -221,7 +221,7 @@ export function Sidebar({
               onClick={() => setType(type === t ? "" : t)}
             >
               {type !== t && <span style={s.dot(NODE_TYPE_COLOR[t])} />}
-              {t}
+              {NODE_TYPE_LABEL[t]}
             </button>
           ))}
         </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { EDGE_TYPES, NODE_TYPES, edgeTypesFor, type EdgeType, type NodeType, type VertexNode } from "@/lib/types";
 import { createEdgeAction, createNodeAction } from "./actions";
 import { MeetingForm } from "./MeetingForm";
+import { NODE_TYPE_LABEL } from "./typeColors";
 
 export type QuickTab = "closed" | "meeting" | "node" | "edge";
 
@@ -191,7 +192,7 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
           style={s.tabBtn(tab === "meeting")}
           onClick={() => setTab(tab === "meeting" ? "closed" : "meeting")}
         >
-          + Log a meeting
+          + Log a meeting / event
         </button>
         <button
           type="button"
@@ -225,7 +226,7 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
           <select style={s.input} value={nodeType} onChange={(e) => setNodeType(e.target.value as NodeType)}>
             {NODE_TYPES.map((t) => (
               <option key={t} value={t}>
-                {t}
+                {NODE_TYPE_LABEL[t]}
               </option>
             ))}
           </select>

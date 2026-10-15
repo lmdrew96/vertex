@@ -1,12 +1,13 @@
 import { createEdge } from "./edges";
 import { createNode, getNode, isValidDate, listNodes, meetingName, reactivateNode } from "./nodes";
-import type { Edge, MeetingFields, MeetingNode, NodeType, VertexNode } from "./types";
+import type { Edge, MeetingFields, MeetingKind, MeetingNode, NodeType, VertexNode } from "./types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type MeetingLogInput = {
   date: string;
   name?: string;
+  kind?: MeetingKind; // "event" for a luncheon, talk, reception…; default meeting
   attendees?: string[]; // names or node IDs
   group?: string; // name or node ID
   topics?: string[]; // names or node IDs
@@ -203,6 +204,7 @@ export const logMeeting = async (
 
   const fields: MeetingFields = {
     date: input.date,
+    ...(input.kind ? { kind: input.kind } : {}),
     ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
     ...(input.ccEventId?.trim() ? { ccEventId: input.ccEventId.trim() } : {}),
     ...(input.followUpTaskIds?.length ? { followUpTaskIds: input.followUpTaskIds } : {}),

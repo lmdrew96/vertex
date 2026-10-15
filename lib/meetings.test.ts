@@ -99,6 +99,13 @@ describe("logMeeting — creating", () => {
     expect(result.meeting.name).toBe("2026-10-14 · Art Trembanis");
   });
 
+  it("logs an event when kind is event, and leaves kind unset otherwise", async () => {
+    const event = await logged({ date: "2026-09-30", name: "Trustees luncheon", kind: "event", attendees: ["Art"] });
+    expect(event.meeting.fields.kind).toBe("event");
+    const meeting = await logged({ date: "2026-10-14", attendees: ["Art"] });
+    expect(meeting.meeting.fields.kind).toBeUndefined();
+  });
+
   it("uses an explicit name when given", async () => {
     const result = await logged({ date: "2026-10-14", name: "Coffee chat", attendees: ["Art"] });
     expect(result.meeting.name).toBe("Coffee chat");

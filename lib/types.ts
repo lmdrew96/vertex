@@ -71,8 +71,13 @@ export type GroupFields = {
   url?: string;
 };
 
+// A "meeting" node covers events too (a luncheon, a talk, a reception); kind says which.
+export type MeetingKind = "meeting" | "event";
+export const MEETING_KINDS: MeetingKind[] = ["meeting", "event"];
+
 export type MeetingFields = {
   date: string; // YYYY-MM-DD, local date — never converted
+  kind?: MeetingKind; // unset reads as "meeting"
   ccEventId?: string;
   notes?: string; // markdown
   followUpTaskIds?: string[];

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MeetingChoice } from "@/lib/meetings";
-import type { VertexNode } from "@/lib/types";
+import type { MeetingKind, VertexNode } from "@/lib/types";
 import { logMeetingAction } from "./actions";
 import { NODE_TYPE_COLOR } from "./typeColors";
 
@@ -160,6 +160,7 @@ export function MeetingForm({
   onLogged: (meeting: VertexNode) => void;
 }) {
   const [date, setDate] = useState(todayLocal);
+  const [kind, setKind] = useState<MeetingKind>("meeting");
   const [name, setName] = useState("");
   const [attendees, setAttendees] = useState<string[]>([]);
   const [group, setGroup] = useState("");
@@ -174,6 +175,7 @@ export function MeetingForm({
 
   const reset = () => {
     setDate(todayLocal());
+    setKind("meeting");
     setName("");
     setAttendees([]);
     setGroup("");
@@ -201,6 +203,7 @@ export function MeetingForm({
       const result = await logMeetingAction(userId, {
         date,
         name: name.trim() || undefined,
+        ...(kind === "event" ? { kind } : {}),
         attendees: attendees.map((a) => resolve("attendees", a)),
         group: group.trim() ? resolve("group", group.trim()) : undefined,
         topics: topics.map((t) => resolve("topics", t)),
@@ -214,7 +217,7 @@ export function MeetingForm({
       reset();
       onLogged(result.meeting);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't log the meeting.");
+      setError(e instanceof Error ? e.message : `Couldn't log the ${kind}.`);
     } finally {
       setBusy(false);
     }
@@ -229,11 +232,18 @@ export function MeetingForm({
 
   return (
     <div style={s.form}>
+      <div style={s.chips} role="group" aria-label="Meeting or event">
+        {(["meeting", "event"] as const).map((k) => (
+          <button key={k} type="button" style={s.choiceBtn(kind === k)} aria-pressed={kind === k} onClick={() => setKind(k)}>
+            {k === "meeting" ? "Meeting" : "Event (luncheon, talk…)"}
+          </button>
+        ))}
+      </div>
       <div style={s.row}>
         <input
           style={{ ...s.input, flex: "0 0 170px" }}
           type="date"
-          aria-label="Meeting date"
+          aria-label={kind === "event" ? "Event date" : "Meeting date"}
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
@@ -323,7 +333,7 @@ export function MeetingForm({
 
       {error && <p style={s.error}>{error}</p>}
       <button type="button" style={s.submit} onClick={() => void submit()} disabled={busy}>
-        {busy ? "Logging…" : "Log meeting"}
+        {busy ? "Logging…" : kind === "event" ? "Log event" : "Log meeting"}
       </button>
     </div>
   );

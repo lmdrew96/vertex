@@ -251,7 +251,10 @@ export function DetailPanel({ userId, nodeId, onSelectNode, onArchived, onClose,
       ]);
     }
   }
-  if (node?.type === "meeting") fieldRows.push(["Date", formatDate(node.fields.date)]);
+  if (node?.type === "meeting") {
+    fieldRows.push(["Date", formatDate(node.fields.date)]);
+    if (node.fields.kind === "event") fieldRows.push(["Kind", "Event"]);
+  }
 
   return (
     <div style={s.panel(open, isMobile)}>
@@ -311,8 +314,8 @@ export function DetailPanel({ userId, nodeId, onSelectNode, onArchived, onClose,
 
             {node.type !== "meeting" && (
               <div style={s.section}>
-                <p style={s.sectionLabel}>Meetings ({current.recentMeetings.length})</p>
-                {current.recentMeetings.length === 0 && <p style={s.empty}>No meetings yet.</p>}
+                <p style={s.sectionLabel}>Meetings & events ({current.recentMeetings.length})</p>
+                {current.recentMeetings.length === 0 && <p style={s.empty}>No meetings or events yet.</p>}
                 {current.recentMeetings.map((m) => (
                   <button key={m.id} type="button" style={s.card} onClick={() => onSelectNode(m.id)}>
                     <div style={s.cardTop}>

@@ -362,6 +362,13 @@ describe("isValidDate", () => {
 });
 
 describe("parseFields", () => {
+  it("takes kind per type: meeting/event on meetings, group kinds on groups", () => {
+    expect(parseFields("meeting", { date: "2026-09-30", kind: "event" })).toEqual({ date: "2026-09-30", kind: "event" });
+    expect(() => parseFields("meeting", { date: "2026-09-30", kind: "club" })).toThrow(/meeting must be one of: meeting, event/);
+    expect(() => parseFields("group", { kind: "event" })).toThrow(/group must be one of: council/);
+    expect(parseFields("meeting", { kind: null }, true)).toEqual({ kind: null });
+  });
+
   it("requires date on meetings", () => {
     expect(() => parseFields("meeting", undefined)).toThrow(/fields.date/);
     expect(() => parseFields("meeting", { notes: "x" })).toThrow(/fields.date/);

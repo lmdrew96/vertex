@@ -26,8 +26,10 @@ import {
 import {
   EDGE_TYPES,
   GROUP_KINDS,
+  MEETING_KINDS,
   NODE_TYPES,
   type EdgeType,
+  type MeetingKind,
   type NodeCreateInput,
   type NodeType,
 } from "./types";
@@ -62,13 +64,17 @@ const textContent = (payload: unknown) => ({
 const FIELDS_SCHEMA = {
   type: "object",
   description:
-    "Type-specific fields, all optional except meeting.date. person: role, affiliation, email, howWeMet. group: kind, url. meeting: date (YYYY-MM-DD, required), ccEventId, notes (markdown), followUpTaskIds (ControlledChaos task IDs). topic: none.",
+    "Type-specific fields, all optional except meeting.date. person: role, affiliation, email, howWeMet. group: kind, url. meeting (also used for events): date (YYYY-MM-DD, required), kind (meeting | event), ccEventId, notes (markdown), followUpTaskIds (ControlledChaos task IDs). topic: none.",
   properties: {
     role: { type: "string", description: 'person — e.g. "AAP Director".' },
     affiliation: { type: "string", description: "person — where they work or study." },
     email: { type: "string", description: "person" },
     howWeMet: { type: "string", description: "person" },
-    kind: { type: "string", enum: GROUP_KINDS, description: "group" },
+    kind: {
+      type: "string",
+      enum: [...GROUP_KINDS, ...MEETING_KINDS],
+      description: `group: ${GROUP_KINDS.join(" | ")}. meeting: ${MEETING_KINDS.join(" | ")} (a luncheon, talk, or reception is an event; unset means meeting).`,
+    },
     url: { type: "string", description: "group" },
     date: { type: "string", description: "meeting — YYYY-MM-DD." },
     ccEventId: { type: "string", description: "meeting — ControlledChaos event ID." },
@@ -92,7 +98,7 @@ export const TOOLS = [
   {
     name: "vtx_node_create",
     description:
-      "Create a node in Nae's people graph: a person, group (org/council/team/class/program), meeting, or topic. Generates a slug ID from the name. Starts as an orphan — connect it with vtx_edge_create within 7 days or it will be auto-archived.",
+      "Create a node in Nae's people graph: a person, group (org/council/team/class/program), meeting (or event: set fields.kind \"event\" for a luncheon, talk, reception…), or topic. Generates a slug ID from the name. Starts as an orphan — connect it with vtx_edge_create within 7 days or it will be auto-archived.",
     inputSchema: {
       type: "object",
       properties: {
@@ -246,7 +252,7 @@ export const TOOLS = [
   {
     name: "vtx_meeting_log",
     description:
-      "Log a whole meeting in one call: creates the meeting node, matches or creates attendees (person), the group, and topics, and connects them (attended, held_by, about). Names match case-insensitively against existing nodes of the right type. It never guesses: if a name is ambiguous, only similar to an existing person (\"Trembanis\" vs \"Art Trembanis\"), or matches an archived node, it returns status \"needs_choice\" with candidates and creates NOTHING. Re-call with the chosen node ID in place of the name, or list the name in confirm_new to create a new node. Passing an archived node's ID reactivates it. Needs at least one attendee or a group. Stores ControlledChaos IDs only.",
+      "Log a whole meeting or event in one call (set kind \"event\" for a luncheon, talk, reception…): creates the meeting node, matches or creates attendees (person), the group, and topics, and connects them (attended, held_by, about). Names match case-insensitively against existing nodes of the right type. It never guesses: if a name is ambiguous, only similar to an existing person (\"Trembanis\" vs \"Art Trembanis\"), or matches an archived node, it returns status \"needs_choice\" with candidates and creates NOTHING. Re-call with the chosen node ID in place of the name, or list the name in confirm_new to create a new node. Passing an archived node's ID reactivates it. Needs at least one attendee or a group. Stores ControlledChaos IDs only.",
     inputSchema: {
       type: "object",
       properties: {
@@ -254,6 +260,11 @@ export const TOOLS = [
         name: {
           type: "string",
           description: 'Optional. Defaults to "{date} · {group or first attendee}", e.g. "2026-10-14 · PSAC".',
+        },
+        kind: {
+          type: "string",
+          enum: MEETING_KINDS,
+          description: 'Optional. "event" for a luncheon, talk, reception, or similar; default "meeting".',
         },
         attendees: {
           type: "array",
@@ -658,6 +669,10 @@ export const dispatchTool = async (
     case "vtx_meeting_log": {
       const date = asString(args.date);
       if (!date) throw new ToolError(-32602, "vtx_meeting_log requires date (YYYY-MM-DD)");
+      const kind = asString(args.kind);
+      if (kind !== undefined && !(MEETING_KINDS as string[]).includes(kind)) {
+        throw new ToolError(-32602, `kind must be one of: ${MEETING_KINDS.join(", ")}`);
+      }
       for (const key of ["attendees", "topics", "follow_up_task_ids", "confirm_new"]) {
         if (args[key] !== undefined && !asStringArray(args[key])) {
           throw new ToolError(-32602, `${key} must be an array of strings`);
@@ -667,6 +682,7 @@ export const dispatchTool = async (
         const result = await logMeeting(userId, {
           date,
           name: asString(args.name),
+          kind: kind as MeetingKind | undefined,
           attendees: asStringArray(args.attendees),
           group: asString(args.group),
           topics: asStringArray(args.topics),

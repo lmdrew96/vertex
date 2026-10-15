@@ -15,3 +15,11 @@ export const NODE_TYPE_TEXT: Record<NodeType, string> = {
   meeting: "var(--color-on-light)",
   topic: "var(--color-on-dark)",
 };
+
+// How each type reads in the UI. Meeting nodes cover events too (fields.kind says which).
+export const NODE_TYPE_LABEL: Record<NodeType, string> = {
+  person: "person",
+  group: "group",
+  meeting: "meeting / event",
+  topic: "topic",
+};

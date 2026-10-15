@@ -78,10 +78,12 @@ lib/
 |---|---|
 | `person` | `role`, `affiliation`, `email`, `howWeMet` |
 | `group` | `kind` (council / club / office / class / program), `url` |
-| `meeting` | `date` (YYYY-MM-DD, **required**), `ccEventId`, `notes` (markdown), `followUpTaskIds` |
+| `meeting` | `date` (YYYY-MM-DD, **required**), `kind` (`meeting` \| `event`; unset = meeting), `ccEventId`, `notes` (markdown), `followUpTaskIds` |
 | `topic` | none |
 
 `VertexNode` is a discriminated union on `type`. `parseFields()` in `lib/nodes.ts` validates fields at runtime against the type. On update, fields merge, and `null` clears a key (a meeting's `date` can't be cleared). `description` is optional and defaults to `""`. Meeting names default to the date. `meetingName(date, context)` builds `"{date} · {group or first attendee}"`.
+
+Meeting nodes cover events too (a luncheon, a talk): the UI says "meeting / event", and `fields.kind` tells them apart. The stored type stays `meeting` on purpose (no migration, no tool rename).
 
 Meeting dates are local calendar dates stored as plain strings. Never convert them to or from UTC.
 
