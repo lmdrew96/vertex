@@ -6,18 +6,22 @@ import {
   Background,
   Controls,
   MarkerType,
+  Position,
   type Node as RFNode,
   type Edge as RFEdge,
   type ReactFlowInstance,
 } from "@xyflow/react";
-import type { Edge as VertexEdge, EdgeType, NodeType } from "@/lib/types";
+import type { Edge as VertexEdge, EdgeType, NodeType, VertexNode } from "@/lib/types";
 import type { Subgraph } from "@/lib/graph";
 import { graphQueryAction } from "./actions";
 
 import { NODE_TYPE_COLOR, NODE_TYPE_TEXT } from "./typeColors";
 
+// "via_meeting" only exists in the hide-meetings view: a person drawn straight to a group/topic.
+type DisplayEdgeType = EdgeType | "via_meeting";
+
 const EDGE_TYPE_STYLE: Record<
-  EdgeType,
+  DisplayEdgeType,
   { stroke: string; strokeWidth: number; dashed?: boolean; arrow?: boolean }
 > = {
   member_of: { stroke: "var(--color-teal-deep)", strokeWidth: 2, arrow: true },
@@ -28,9 +32,19 @@ const EDGE_TYPE_STYLE: Record<
   can_help_with: { stroke: "var(--color-gold)", strokeWidth: 2.5, arrow: true },
   introduced: { stroke: "var(--color-gold)", strokeWidth: 2, dashed: true, arrow: true },
   connects_to: { stroke: "var(--color-lavender)", strokeWidth: 1.5 },
+  via_meeting: { stroke: "var(--color-mint)", strokeWidth: 2 },
 };
 
-const RING_SPACING = 220;
+// The people → meetings → groups/topics flow. Everything else skips a column and draws lighter.
+const MAIN_FLOW = new Set<DisplayEdgeType>(["attended", "held_by", "about", "via_meeting"]);
+const SIDE_EDGE_OPACITY = 0.35;
+const FADED_OPACITY = 0.12;
+
+// Column per type: people | meetings | groups, then topics.
+const COLUMN: Record<NodeType, number> = { person: 0, meeting: 1, group: 2, topic: 2 };
+const COLUMN_TITLES = ["People", "Meetings", "Groups & topics"];
+const COLUMN_GAP = 320;
+const ROW_GAP = 84;
 const NODE_WIDTH = 140;
 const NODE_HEIGHT = 64;
 const MEETING_WIDTH = 112;
@@ -43,51 +57,114 @@ function truncateLabel(name: string): string {
     : name;
 }
 
-function layout(subgraph: Subgraph): RFNode[] {
-  const adjacency = new Map<string, string[]>();
-  for (const edge of subgraph.edges) {
-    if (!adjacency.has(edge.from)) adjacency.set(edge.from, []);
-    if (!adjacency.has(edge.to)) adjacency.set(edge.to, []);
-    adjacency.get(edge.from)!.push(edge.to);
-    adjacency.get(edge.to)!.push(edge.from);
-  }
+type DisplayEdge = {
+  id: string;
+  from: string;
+  to: string;
+  type: DisplayEdgeType;
+  label: string;
+  source?: VertexEdge; // the real edge, for the evidence popover
+};
 
-  const level = new Map<string, number>([[subgraph.root.id, 0]]);
-  let frontier = [subgraph.root.id];
-  while (frontier.length > 0) {
-    const next: string[] = [];
-    for (const id of frontier) {
-      for (const neighbor of adjacency.get(id) ?? []) {
-        if (!level.has(neighbor)) {
-          level.set(neighbor, level.get(id)! + 1);
-          next.push(neighbor);
-        }
+type DisplayGraph = { nodes: VertexNode[]; edges: DisplayEdge[] };
+
+/**
+ * What gets drawn. With meetings hidden, each meeting is replaced by edges from its attendees
+ * to its groups/topics (one per pair, however many meetings they share). A root meeting stays.
+ */
+function displayGraph(subgraph: Subgraph, hideMeetings: boolean): DisplayGraph {
+  const real = (e: VertexEdge): DisplayEdge => ({ id: e.id, from: e.from, to: e.to, type: e.type, label: e.type, source: e });
+  if (!hideMeetings) return { nodes: subgraph.nodes, edges: subgraph.edges.map(real) };
+
+  const hidden = new Set(
+    subgraph.nodes.filter((n) => n.type === "meeting" && n.id !== subgraph.root.id).map((n) => n.id),
+  );
+  const attendees = new Map<string, string[]>();
+  const targets = new Map<string, string[]>();
+  for (const e of subgraph.edges) {
+    if (e.type === "attended" && hidden.has(e.to)) attendees.set(e.to, [...(attendees.get(e.to) ?? []), e.from]);
+    if ((e.type === "held_by" || e.type === "about") && hidden.has(e.from)) {
+      targets.set(e.from, [...(targets.get(e.from) ?? []), e.to]);
+    }
+  }
+  const via = new Map<string, DisplayEdge & { count: number }>();
+  for (const meetingId of hidden) {
+    for (const person of attendees.get(meetingId) ?? []) {
+      for (const target of targets.get(meetingId) ?? []) {
+        const id = `via:${person}:${target}`;
+        const existing = via.get(id);
+        if (existing) existing.count += 1;
+        else via.set(id, { id, from: person, to: target, type: "via_meeting", label: "", count: 1 });
       }
     }
-    frontier = next;
   }
+  return {
+    nodes: subgraph.nodes.filter((n) => !hidden.has(n.id)),
+    edges: [
+      ...subgraph.edges.filter((e) => !hidden.has(e.from) && !hidden.has(e.to)).map(real),
+      ...[...via.values()].map((e) => ({ ...e, label: `met via ${e.count} meeting${e.count === 1 ? "" : "s"}` })),
+    ],
+  };
+}
 
-  const byLevel = new Map<number, string[]>();
-  for (const node of subgraph.nodes) {
-    const l = level.get(node.id) ?? 0;
-    if (!byLevel.has(l)) byLevel.set(l, []);
-    byLevel.get(l)!.push(node.id);
+const byName = (a: VertexNode, b: VertexNode): number => a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
+
+/**
+ * Deterministic columns. Meetings sort newest first; people and groups/topics are ordered by
+ * the average row of their neighbors in other columns (a few barycenter passes), which cuts
+ * most crossings. Ties fall back to name, so the same graph always lands the same way.
+ */
+function columnPositions(graph: DisplayGraph): Map<string, { x: number; y: number }> {
+  const neighbors = new Map<string, string[]>();
+  for (const e of graph.edges) {
+    neighbors.set(e.from, [...(neighbors.get(e.from) ?? []), e.to]);
+    neighbors.set(e.to, [...(neighbors.get(e.to) ?? []), e.from]);
+  }
+  const columns: VertexNode[][] = [[], [], []];
+  for (const node of graph.nodes) columns[COLUMN[node.type]].push(node);
+  columns[0].sort(byName);
+  columns[1].sort((a, b) => {
+    const da = a.type === "meeting" ? a.fields.date : "";
+    const db = b.type === "meeting" ? b.fields.date : "";
+    return db.localeCompare(da) || byName(a, b);
+  });
+  // Groups above topics.
+  const groupsThenTopics = (a: VertexNode, b: VertexNode): number =>
+    Number(a.type === "topic") - Number(b.type === "topic");
+  columns[2].sort((a, b) => groupsThenTopics(a, b) || byName(a, b));
+
+  const row = new Map<string, number>();
+  const place = (col: VertexNode[]) => col.forEach((n, i) => row.set(n.id, i - (col.length - 1) / 2));
+  columns.forEach(place);
+
+  const barycenter = (node: VertexNode): number => {
+    const rows = (neighbors.get(node.id) ?? [])
+      .filter((id) => row.has(id))
+      .map((id) => row.get(id)!);
+    return rows.length > 0 ? rows.reduce((a, b) => a + b, 0) / rows.length : Number.POSITIVE_INFINITY;
+  };
+  for (const c of [0, 2, 0, 2]) {
+    const bary = new Map(columns[c].map((n) => [n.id, barycenter(n)]));
+    columns[c].sort((a, b) => {
+      if (c === 2 && groupsThenTopics(a, b) !== 0) return groupsThenTopics(a, b);
+      const ba = bary.get(a.id)!;
+      const bb = bary.get(b.id)!;
+      if (ba !== bb) return ba === Number.POSITIVE_INFINITY ? 1 : bb === Number.POSITIVE_INFINITY ? -1 : ba - bb;
+      return byName(a, b);
+    });
+    place(columns[c]);
   }
 
   const positions = new Map<string, { x: number; y: number }>();
-  for (const [l, ids] of byLevel) {
-    if (l === 0) {
-      positions.set(ids[0], { x: 0, y: 0 });
-      continue;
-    }
-    const radius = l * RING_SPACING;
-    ids.forEach((id, i) => {
-      const angle = (i / ids.length) * 2 * Math.PI;
-      positions.set(id, { x: radius * Math.cos(angle), y: radius * Math.sin(angle) });
-    });
+  for (const node of graph.nodes) {
+    positions.set(node.id, { x: COLUMN[node.type] * COLUMN_GAP, y: row.get(node.id)! * ROW_GAP });
   }
+  return positions;
+}
 
-  return subgraph.nodes.map((node) => {
+function layout(subgraph: Subgraph, graph: DisplayGraph): RFNode[] {
+  const positions = columnPositions(graph);
+  return graph.nodes.map((node) => {
     const center = positions.get(node.id) ?? { x: 0, y: 0 };
     // Meetings are events, not entities, so they draw smaller.
     const small = node.type === "meeting";
@@ -98,6 +175,8 @@ function layout(subgraph: Subgraph): RFNode[] {
       position: { x: center.x - width / 2, y: center.y - height / 2 },
       width,
       height,
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
       data: { label: `${truncateLabel(node.name)}\n(${node.type})` },
       style: {
         background: NODE_TYPE_COLOR[node.type],
@@ -116,6 +195,7 @@ function layout(subgraph: Subgraph): RFNode[] {
         alignItems: "center",
         justifyContent: "center",
         overflow: "hidden",
+        transition: "opacity 0.15s ease",
       },
     };
   });
@@ -129,23 +209,51 @@ function computeBounds(nodes: RFNode[]): { x: number; y: number; width: number; 
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
-function buildEdges(subgraph: Subgraph): RFEdge[] {
-  return subgraph.edges.map((edge) => {
+function buildEdges(graph: DisplayGraph): RFEdge[] {
+  const column = new Map(graph.nodes.map((n) => [n.id, COLUMN[n.type]]));
+  return graph.edges.map((edge) => {
     const style = EDGE_TYPE_STYLE[edge.type];
+    // Draw every edge left → right so it leaves a right handle and enters a left one;
+    // an edge stored right → left keeps its arrow on the real target end.
+    const flip = (column.get(edge.from) ?? 0) > (column.get(edge.to) ?? 0);
+    const marker = style.arrow ? { type: MarkerType.ArrowClosed, color: style.stroke } : undefined;
     return {
       id: edge.id,
-      source: edge.from,
-      target: edge.to,
-      label: edge.type,
+      source: flip ? edge.to : edge.from,
+      target: flip ? edge.from : edge.to,
+      data: { label: edge.label, main: MAIN_FLOW.has(edge.type) },
       style: {
         stroke: style.stroke,
         strokeWidth: style.strokeWidth,
         strokeDasharray: style.dashed ? "6 4" : undefined,
+        opacity: MAIN_FLOW.has(edge.type) ? 1 : SIDE_EDGE_OPACITY,
+        transition: "opacity 0.15s ease",
       },
-      markerEnd: style.arrow ? { type: MarkerType.ArrowClosed, color: style.stroke } : undefined,
+      markerEnd: flip ? undefined : marker,
+      markerStart: flip ? marker : undefined,
       labelStyle: { fontFamily: "var(--font-mono)", fontSize: 10 },
+      labelBgPadding: [4, 2] as [number, number],
+      labelBgBorderRadius: 4,
     };
   });
+}
+
+function LegendSwatch({ type }: { type: DisplayEdgeType }) {
+  const style = EDGE_TYPE_STYLE[type];
+  return (
+    <svg width="26" height="8" aria-hidden="true">
+      <line
+        x1="1"
+        y1="4"
+        x2="25"
+        y2="4"
+        stroke={style.stroke}
+        strokeWidth={style.strokeWidth}
+        strokeDasharray={style.dashed ? "6 4" : undefined}
+        opacity={MAIN_FLOW.has(type) ? 1 : SIDE_EDGE_OPACITY + 0.25}
+      />
+    </svg>
+  );
 }
 
 const s = {
@@ -237,6 +345,42 @@ const s = {
     fontFamily: "var(--font-body)",
     fontSize: 13,
   },
+  toggleBtn: (active: boolean) => ({
+    fontFamily: "var(--font-body)",
+    fontSize: 12,
+    borderRadius: 9999,
+    padding: "3px 10px",
+    border: `1.5px solid ${active ? "var(--color-teal-deep)" : "var(--color-lavender)"}`,
+    background: active ? "var(--color-teal-deep)" : "transparent",
+    color: active ? "var(--color-white)" : "var(--color-ink)",
+    cursor: "pointer",
+  }),
+  divider: { width: 1, height: 18, background: "var(--color-lavender)" },
+  legend: {
+    position: "absolute" as const,
+    top: 12,
+    right: 12,
+    zIndex: 5,
+    background: "var(--color-white)",
+    border: "1.5px solid var(--color-lavender)",
+    borderRadius: 10,
+    padding: "8px 12px",
+    display: "grid",
+    gridTemplateColumns: "auto auto",
+    columnGap: 8,
+    rowGap: 3,
+    alignItems: "center",
+    fontFamily: "var(--font-mono)",
+    fontSize: 10,
+    color: "var(--color-ink)",
+  },
+  columnTitle: {
+    fontFamily: "var(--font-mono)",
+    fontSize: 11,
+    textTransform: "uppercase" as const,
+    color: "var(--color-teal-deep)",
+    margin: "14px 0 6px",
+  },
 };
 
 type GraphCanvasProps = {
@@ -257,8 +401,11 @@ export function GraphCanvas({
   onLogFirstMeeting,
 }: GraphCanvasProps) {
   const [depth, setDepth] = useState(2);
+  const [hideMeetings, setHideMeetings] = useState(false);
   const [subgraph, setSubgraph] = useState<Subgraph | null>(null);
   const [popover, setPopover] = useState<{ edge: VertexEdge; x: number; y: number } | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedNodeId) {
@@ -266,11 +413,52 @@ export function GraphCanvas({
       return;
     }
     setPopover(null);
+    setHoveredNode(null);
+    setHoveredEdge(null);
     graphQueryAction(userId, { node_id: selectedNodeId, depth }).then(setSubgraph);
   }, [userId, selectedNodeId, depth]);
 
-  const rfNodes = useMemo(() => (subgraph ? layout(subgraph) : []), [subgraph]);
-  const rfEdges = useMemo(() => (subgraph ? buildEdges(subgraph) : []), [subgraph]);
+  const graph = useMemo(() => (subgraph ? displayGraph(subgraph, hideMeetings) : null), [subgraph, hideMeetings]);
+  const rfNodes = useMemo(() => (subgraph && graph ? layout(subgraph, graph) : []), [subgraph, graph]);
+  const rfEdges = useMemo(() => (graph ? buildEdges(graph) : []), [graph]);
+  const legendTypes = useMemo(
+    () => (Object.keys(EDGE_TYPE_STYLE) as DisplayEdgeType[]).filter((t) => graph?.edges.some((e) => e.type === t)),
+    [graph],
+  );
+
+  // Hover focus: the hovered node and its direct neighbors stay lit, everything else fades.
+  const focus = useMemo(() => {
+    if (!hoveredNode) return null;
+    const lit = new Set([hoveredNode]);
+    for (const e of rfEdges) {
+      if (e.source === hoveredNode) lit.add(e.target);
+      if (e.target === hoveredNode) lit.add(e.source);
+    }
+    return lit;
+  }, [hoveredNode, rfEdges]);
+
+  const shownNodes = useMemo<RFNode[]>(
+    () =>
+      focus
+        ? rfNodes.map((n) => ({ ...n, style: { ...n.style, opacity: focus.has(n.id) ? 1 : FADED_OPACITY } }))
+        : rfNodes,
+    [rfNodes, focus],
+  );
+  const shownEdges = useMemo<RFEdge[]>(
+    () =>
+      rfEdges.map((e) => {
+        const touches = hoveredNode ? e.source === hoveredNode || e.target === hoveredNode : true;
+        const base = (e.data as { main: boolean }).main ? 1 : SIDE_EDGE_OPACITY;
+        return {
+          ...e,
+          label: e.id === hoveredEdge ? (e.data as { label: string }).label : undefined,
+          style: { ...e.style, opacity: touches ? (hoveredNode ? 1 : base) : FADED_OPACITY / 2 },
+        };
+      }),
+    [rfEdges, hoveredNode, hoveredEdge],
+  );
+
+  const rootIsMeeting = subgraph?.root.type === "meeting";
 
   if (!selectedNodeId) {
     return (
@@ -291,42 +479,90 @@ export function GraphCanvas({
     );
   }
 
+  const toolbar = (
+    <div style={s.toolbar}>
+      <span style={s.toolbarLabel}>Depth</span>
+      {[1, 2, 3, 4].map((d) => (
+        <button key={d} style={s.depthBtn(d === depth)} onClick={() => setDepth(d)}>
+          {d}
+        </button>
+      ))}
+      <span style={s.divider} />
+      <button
+        type="button"
+        style={s.toggleBtn(hideMeetings)}
+        onClick={() => setHideMeetings((x) => !x)}
+        aria-pressed={hideMeetings}
+        title={
+          rootIsMeeting
+            ? "The selected meeting stays; other meetings collapse into who-knows-who lines."
+            : "Draw people straight to the groups and topics their meetings link to."
+        }
+      >
+        Hide meetings
+      </button>
+    </div>
+  );
+
   if (isMobile) {
+    // Phone width: the same three columns, stacked.
+    const columns: VertexNode[][] = [[], [], []];
+    if (graph) {
+      const positions = columnPositions(graph);
+      for (const node of [...graph.nodes].sort((a, b) => positions.get(a.id)!.y - positions.get(b.id)!.y)) {
+        columns[COLUMN[node.type]].push(node);
+      }
+    }
     return (
       <div style={{ ...s.container, ...s.mobileList }}>
-        <div style={s.toolbar}>
-          <span style={s.toolbarLabel}>Depth</span>
-          {[1, 2, 3, 4].map((d) => (
-            <button key={d} style={s.depthBtn(d === depth)} onClick={() => setDepth(d)}>
-              {d}
-            </button>
-          ))}
-        </div>
+        {toolbar}
         <div style={{ height: 44 }} />
-        {subgraph?.nodes.map((node) => (
-          <div key={node.id} style={s.mobileRow} onClick={() => onSelectNode(node.id)}>
-            <strong>{node.name}</strong> — {node.type}
-          </div>
-        ))}
+        {columns.map((nodes, c) =>
+          nodes.length === 0 ? null : (
+            <div key={c}>
+              <p style={s.columnTitle}>{COLUMN_TITLES[c]}</p>
+              {nodes.map((node) => (
+                <div
+                  key={node.id}
+                  style={{
+                    ...s.mobileRow,
+                    borderLeft: `6px solid ${NODE_TYPE_COLOR[node.type]}`,
+                    fontWeight: node.id === subgraph?.root.id ? 600 : undefined,
+                  }}
+                  onClick={() => onSelectNode(node.id)}
+                >
+                  <strong>{node.name}</strong> · {node.type}
+                </div>
+              ))}
+            </div>
+          ),
+        )}
       </div>
     );
   }
 
   return (
     <div style={s.container}>
-      <div style={s.toolbar}>
-        <span style={s.toolbarLabel}>Depth</span>
-        {[1, 2, 3, 4].map((d) => (
-          <button key={d} style={s.depthBtn(d === depth)} onClick={() => setDepth(d)}>
-            {d}
-          </button>
-        ))}
-      </div>
+      {toolbar}
+      {legendTypes.length > 0 && (
+        <div style={s.legend} aria-label="Edge legend">
+          {legendTypes.map((t) => (
+            <span key={t} style={{ display: "contents" }}>
+              <LegendSwatch type={t} />
+              <span>{t === "via_meeting" ? "met via meeting" : t}</span>
+            </span>
+          ))}
+        </div>
+      )}
       <ReactFlow
-        key={`${subgraph?.root.id}-${depth}`}
-        nodes={rfNodes}
-        edges={rfEdges}
+        key={`${subgraph?.root.id}-${depth}-${hideMeetings}`}
+        nodes={shownNodes}
+        edges={shownEdges}
         onNodeClick={(_, node) => onSelectNode(node.id)}
+        onNodeMouseEnter={(_, node) => setHoveredNode(node.id)}
+        onNodeMouseLeave={() => setHoveredNode(null)}
+        onEdgeMouseEnter={(_, edge) => setHoveredEdge(edge.id)}
+        onEdgeMouseLeave={() => setHoveredEdge(null)}
         onEdgeClick={(event, edge) => {
           const vertexEdge = subgraph?.edges.find((e) => e.id === edge.id);
           if (vertexEdge && (vertexEdge.evidence || vertexEdge.notes)) {
