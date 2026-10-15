@@ -82,6 +82,13 @@ describe("generateSlug", () => {
     expect(generateSlug("Sacred Edges")).toBe("sacred-edges");
   });
 
+  it("keeps the base letter of accented names", () => {
+    expect(generateSlug("José Riera")).toBe("jose-riera");
+    expect(generateSlug("Ștefan Popescu")).toBe("stefan-popescu");
+    expect(generateSlug("Muñoz")).toBe("munoz");
+    expect(generateSlug("Ioana Mărgărit")).toBe("ioana-margarit");
+  });
+
   it("strips special characters", () => {
     expect(generateSlug("Whitman's 'Song'!")).toBe("whitmans-song");
   });

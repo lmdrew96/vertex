@@ -11,8 +11,12 @@ import { GROUP_KINDS, type NodeCreateInput, type NodeType, type NodeUpdateInput,
 
 // ── Slug generation ──────────────────────────────────────────────────────────
 
+// NFD splits accented letters into letter + combining mark, so "José" / "Ștefan" / "Muñoz"
+// keep their base letters instead of losing them to the ASCII filter.
 export const generateSlug = (name: string): string =>
   name
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s-]/g, "")
