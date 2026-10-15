@@ -162,8 +162,8 @@ const s = {
   archiveBtn: {
     fontFamily: "var(--font-body)",
     background: "none",
-    border: "1.5px solid #c0392b",
-    color: "#c0392b",
+    border: "1.5px solid var(--color-danger)",
+    color: "var(--color-danger)",
     borderRadius: 9999,
     padding: "9px 18px",
     fontSize: 13,

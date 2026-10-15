@@ -11,11 +11,33 @@
   --color-surface:   #F7F5FA;
   --color-ink:       #1E1830;
   --color-white:     #FFFFFF;
+  --color-danger:    #c0392b;
+  /* Text on the type/accent fills (gold, mint, purple, teal-deep). */
+  --color-on-light:  #1E1830;
+  --color-on-dark:   #FFFFFF;
 
   --font-display: 'Fraunces', Georgia, serif;
   --font-body:    'Space Grotesk', system-ui, sans-serif;
   --font-mono:    'Geist Mono', 'Fira Code', monospace;
 }
+
+/* Dark (default; the inline script in layout.tsx switches to light from localStorage).
+   ADHDesigns Arcade values mapped onto Vertex's roles: page Indigo-Void, panels Indigo-Deep,
+   text Bone, accent Dusty Cyan, borders Muted Indigo, errors Caution Amber (never red). */
+[data-theme="dark"] {
+  --color-teal-deep: #5fc2c0;
+  --color-lavender:  #665c99;
+  --color-surface:   #140f22;
+  --color-ink:       #ede6d2;
+  --color-white:     #241d38;
+  --color-danger:    #f2cb05;
+  --color-on-light:  #140f22;
+  --color-on-dark:   #140f22;
+  color-scheme: dark;
+}
+
+/* Let the page surface show through the graph canvas in both themes. */
+.react-flow { --xy-background-color: transparent; }
 
 *, *::before, *::after { box-sizing: border-box; }
 

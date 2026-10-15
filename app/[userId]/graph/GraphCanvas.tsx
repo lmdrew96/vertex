@@ -16,6 +16,7 @@ import type { Subgraph } from "@/lib/graph";
 import { graphQueryAction } from "./actions";
 
 import { NODE_TYPE_COLOR, NODE_TYPE_TEXT } from "./typeColors";
+import { useTheme } from "../../ThemeToggle";
 
 // "via_meeting" only exists in the hide-meetings view: a person drawn straight to a group/topic.
 type DisplayEdgeType = EdgeType | "via_meeting";
@@ -275,7 +276,7 @@ const s = {
   firstMeetingBtn: {
     fontFamily: "var(--font-body)",
     background: "var(--color-gold)",
-    color: "var(--color-ink)",
+    color: "var(--color-on-light)",
     border: "none",
     borderRadius: 9999,
     padding: "11px 22px",
@@ -328,7 +329,7 @@ const s = {
   popoverType: {
     fontFamily: "var(--font-mono)",
     fontSize: 10,
-    color: "var(--color-mint)",
+    color: "var(--color-lavender)",
     marginBottom: 4,
     textTransform: "uppercase" as const,
   },
@@ -406,6 +407,7 @@ export function GraphCanvas({
   const [popover, setPopover] = useState<{ edge: VertexEdge; x: number; y: number } | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     if (!selectedNodeId) {
@@ -558,6 +560,7 @@ export function GraphCanvas({
         key={`${subgraph?.root.id}-${depth}-${hideMeetings}`}
         nodes={shownNodes}
         edges={shownEdges}
+        colorMode={theme}
         onNodeClick={(_, node) => onSelectNode(node.id)}
         onNodeMouseEnter={(_, node) => setHoveredNode(node.id)}
         onNodeMouseLeave={() => setHoveredNode(null)}

@@ -61,7 +61,7 @@ const s = {
   submitBtn: {
     fontFamily: "var(--font-body)",
     background: "var(--color-gold)",
-    color: "var(--color-ink)",
+    color: "var(--color-on-light)",
     border: "none",
     borderRadius: 9999,
     padding: "10px 20px",
@@ -72,7 +72,7 @@ const s = {
   },
   error: {
     fontFamily: "var(--font-body)",
-    color: "#c0392b",
+    color: "var(--color-danger)",
     fontSize: 12,
     margin: 0,
   },

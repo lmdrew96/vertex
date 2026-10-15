@@ -92,10 +92,10 @@ const badgeStyle = (tone: "ok" | "neutral" | "error") => ({
   padding: "2px 8px",
   whiteSpace: "nowrap" as const,
   ...(tone === "ok"
-    ? { background: "var(--color-mint)", color: "var(--color-ink)" }
+    ? { background: "var(--color-mint)", color: "var(--color-on-light)" }
     : tone === "neutral"
       ? { background: "var(--color-surface)", color: "var(--color-teal-deep)", border: "1px solid var(--color-lavender)" }
-      : { background: "transparent", color: "#c0392b", border: "1px solid #c0392b" }),
+      : { background: "transparent", color: "var(--color-danger)", border: "1px solid var(--color-danger)" }),
 });
 
 // ── Styles ───────────────────────────────────────────────────────────────────
@@ -189,10 +189,10 @@ const s = {
     border: "none",
     padding: 0,
     marginLeft: "auto",
-    color: "#c0392b",
+    color: "var(--color-danger)",
     cursor: "pointer",
   },
-  confirmText: { fontFamily: "var(--font-body)", fontSize: 11.5, color: "#c0392b", marginLeft: "auto" },
+  confirmText: { fontFamily: "var(--font-body)", fontSize: 11.5, color: "var(--color-danger)", marginLeft: "auto" },
   textBox: {
     marginTop: 8,
     padding: "10px 12px",
@@ -202,7 +202,7 @@ const s = {
     overflowY: "auto" as const,
   },
   note: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-teal-deep)", opacity: 0.75, margin: "0 0 8px" },
-  error: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "#c0392b", margin: "0 0 8px" },
+  error: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-danger)", margin: "0 0 8px" },
 };
 
 // ── Viewer modal ─────────────────────────────────────────────────────────────
@@ -487,7 +487,7 @@ export function AttachmentsSection({
                   ) : confirmingDelete === att.id ? (
                     <span style={s.confirmText}>
                       {att.nodeIds.length > 1 ? `Delete from all ${att.nodeIds.length} nodes? ` : "Delete for good? "}
-                      <button type="button" style={{ ...s.textToggle, color: "#c0392b" }} onClick={() => void remove(att)}>
+                      <button type="button" style={{ ...s.textToggle, color: "var(--color-danger)" }} onClick={() => void remove(att)}>
                         Yes
                       </button>{" "}
                       <button type="button" style={s.textToggle} onClick={() => setConfirmingDelete(null)}>

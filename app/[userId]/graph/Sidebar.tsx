@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { NODE_TYPES, type NodeType, type VertexNode } from "@/lib/types";
 import { searchNodesAction } from "./actions";
 import { NODE_TYPE_COLOR, NODE_TYPE_TEXT } from "./typeColors";
+import { ThemeToggle } from "../../ThemeToggle";
 
 
 const s = {
@@ -192,7 +193,10 @@ export function Sidebar({
   return (
     <div style={{ ...s.sidebar, width: isMobile ? "100%" : s.sidebar.width, height: isMobile ? "auto" : s.sidebar.height, position: isMobile ? "static" : s.sidebar.position }}>
       <div style={s.section}>
-        <h1 style={s.h1}>Vertex</h1>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+          <h1 style={s.h1}>Vertex</h1>
+          <ThemeToggle />
+        </div>
         <input
           style={s.input}
           placeholder="Search nodes…"

@@ -8,10 +8,10 @@ export const NODE_TYPE_COLOR: Record<NodeType, string> = {
   topic: "var(--color-purple)",
 };
 
-// Readable text on each fill: ink on the light fills, white on the dark ones.
+// Readable text on each fill in both themes (the dark theme lightens teal-deep, so its text flips).
 export const NODE_TYPE_TEXT: Record<NodeType, string> = {
-  person: "var(--color-ink)",
-  group: "var(--color-white)",
-  meeting: "var(--color-ink)",
-  topic: "var(--color-white)",
+  person: "var(--color-on-light)",
+  group: "var(--color-on-dark)",
+  meeting: "var(--color-on-light)",
+  topic: "var(--color-on-dark)",
 };

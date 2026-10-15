@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PublicAccount } from "@/lib/auth";
 import { AuthPanel } from "./auth-panel";
+import { ThemeToggle } from "./ThemeToggle";
 
 const BASE_URL =
   typeof window !== "undefined" ? window.location.origin : "https://vertex.adhdesigns.dev";
@@ -67,7 +68,7 @@ const s = {
   primaryBtn: {
     fontFamily: "var(--font-body)",
     background: "var(--color-gold)",
-    color: "var(--color-ink)",
+    color: "var(--color-on-light)",
     border: "none",
     borderRadius: 9999,
     padding: "13px 28px",
@@ -125,7 +126,7 @@ const s = {
     background: "var(--color-mint)",
     border: "none",
     borderRadius: 9999,
-    color: "var(--color-ink)",
+    color: "var(--color-on-light)",
     cursor: "pointer",
     fontSize: 12,
     fontWeight: 500,
@@ -159,7 +160,7 @@ const s = {
   },
   errorText: {
     fontFamily: "var(--font-body)",
-    color: "#c0392b",
+    color: "var(--color-danger)",
     fontSize: 13,
     margin: 0,
   },
@@ -256,6 +257,7 @@ export default function Home() {
 
   return (
     <main style={s.page}>
+      <ThemeToggle extraStyle={{ position: "absolute", top: 16, right: 16 }} />
       <div style={s.card}>
         <div>
           <h1 style={s.h1}>Vertex</h1>

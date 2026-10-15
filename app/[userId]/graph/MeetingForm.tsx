@@ -52,7 +52,7 @@ const s = {
   submit: {
     fontFamily: "var(--font-body)",
     background: "var(--color-gold)",
-    color: "var(--color-ink)",
+    color: "var(--color-on-light)",
     border: "none",
     borderRadius: 9999,
     padding: "10px 20px",
@@ -61,7 +61,7 @@ const s = {
     cursor: "pointer",
     alignSelf: "flex-start" as const,
   },
-  error: { fontFamily: "var(--font-body)", color: "#c0392b", fontSize: 12.5, margin: 0 },
+  error: { fontFamily: "var(--font-body)", color: "var(--color-danger)", fontSize: 12.5, margin: 0 },
   choiceBox: {
     border: "1.5px solid var(--color-gold)",
     borderRadius: 10,

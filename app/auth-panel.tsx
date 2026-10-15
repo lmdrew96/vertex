@@ -40,7 +40,7 @@ const s = {
     fontFamily: "var(--font-body)",
     background: "var(--color-gold)",
     opacity: busy ? 0.6 : 1,
-    color: "var(--color-ink)",
+    color: "var(--color-on-light)",
     border: "none",
     borderRadius: 9999,
     padding: "12px 20px",
@@ -49,7 +49,7 @@ const s = {
     cursor: busy ? "default" : "pointer",
     width: "100%",
   }),
-  error: { fontFamily: "var(--font-body)", color: "#c0392b", fontSize: 13, margin: 0 },
+  error: { fontFamily: "var(--font-body)", color: "var(--color-danger)", fontSize: 13, margin: 0 },
   hint: {
     fontFamily: "var(--font-body)",
     color: "var(--color-teal-deep)",
