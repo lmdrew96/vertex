@@ -93,7 +93,7 @@ Meeting dates are local calendar dates stored as plain strings. Never convert th
 | `attended` | person → meeting |
 | `held_by` | meeting → group |
 | `about` | meeting → topic |
-| `involved_in` | person/group → topic |
+| `involved_in` | person/group → topic, group → meeting (involved but not the host) |
 | `can_help_with` | person → topic |
 | `introduced` | person → person |
 | `connects_to` | any → any |

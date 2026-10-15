@@ -83,8 +83,8 @@ const FIELDS_SCHEMA = {
 
 const ORPHAN_HINT: Record<NodeType, string> = {
   person: "add member_of (→ group), attended (→ meeting), or can_help_with (→ topic)",
-  group: "add member_of (person →) or held_by (meeting →)",
-  meeting: "add attended (person →), held_by (→ group), or about (→ topic)",
+  group: "add member_of (person →), held_by (meeting →), or involved_in (→ meeting or topic)",
+  meeting: "add attended (person →), held_by (→ group), about (→ topic), or involved_in (group →)",
   topic: "add about (meeting →), involved_in or can_help_with (person →)",
 };
 
@@ -179,7 +179,7 @@ export const TOOLS = [
   {
     name: "vtx_edge_create",
     description:
-      "Connect two existing nodes with a directed, typed edge. Allowed pairs: member_of person → group; attended person → meeting; held_by meeting → group; about meeting → topic; involved_in person/group → topic; can_help_with person → topic; introduced person → person (A introduced Nae to B); connects_to any → any (say how in notes). An archived endpoint is reactivated; the response lists it under reactivated.",
+      "Connect two existing nodes with a directed, typed edge. Allowed pairs: member_of person → group; attended person → meeting; held_by meeting → group; about meeting → topic; involved_in person/group → topic or group → meeting (a group involved in a meeting it didn't host); can_help_with person → topic; introduced person → person (A introduced Nae to B); connects_to any → any (say how in notes). An archived endpoint is reactivated; the response lists it under reactivated.",
     inputSchema: {
       type: "object",
       properties: {

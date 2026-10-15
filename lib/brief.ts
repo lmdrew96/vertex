@@ -159,13 +159,15 @@ export const brief = async (
   if (root.type !== "meeting") {
     const meetingNeighbors = await Promise.all(meetings.map((m) => neighbors(userId, m.id, byId)));
     meetings.forEach((m, i) => {
-      for (const { other } of meetingNeighbors[i]) {
+      for (const { edge, other } of meetingNeighbors[i]) {
         if (other.id === root.id) continue;
         const via =
           other.type === "person"
             ? `at ${m.name}`
             : other.type === "group"
-              ? `held ${m.name}`
+              ? edge.type === "held_by"
+                ? `held ${m.name}`
+                : `${edge.type.replace(/_/g, " ")} ${m.name}`
               : `discussed at ${m.name}`;
         bucket(other)?.add(other, via);
       }

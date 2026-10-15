@@ -7,7 +7,7 @@ import {
   orphansKey,
 } from "./keys";
 import { clearConnected, getNode, markConnected, reactivateNode } from "./nodes";
-import { EDGE_RULES, edgeTypesFor, type Edge, type EdgeCreateInput, type EdgeType, type NodeType } from "./types";
+import { EDGE_RULES, edgeFits, edgeTypesFor, type Edge, type EdgeCreateInput, type EdgeType, type NodeType } from "./types";
 
 // The pair rules live in types.ts so the browser can use them without pulling in Redis.
 export { EDGE_RULES, edgeTypesFor } from "./types";
@@ -15,14 +15,13 @@ export { EDGE_RULES, edgeTypesFor } from "./types";
 // ── Pair rules ───────────────────────────────────────────────────────────────
 
 const describeRule = (type: EdgeType): string => {
-  const rule = EDGE_RULES[type];
-  return rule ? `${rule.from.join("/")} → ${rule.to.join("/")}` : "any → any";
+  const rules = EDGE_RULES[type];
+  return rules ? rules.map((r) => `${r.from.join("/")} → ${r.to.join("/")}`).join(" or ") : "any → any";
 };
 
 // Throws with the allowed pair and the edge types that would fit, so the caller can retry.
 export const validateEdgePair = (type: EdgeType, from: NodeType, to: NodeType): void => {
-  const rule = EDGE_RULES[type];
-  if (!rule || (rule.from.includes(from) && rule.to.includes(to))) return;
+  if (edgeFits(type, from, to)) return;
   throw new Error(
     `${type} must go ${describeRule(type)}; got ${from} → ${to}. ` +
       `Edge types that fit ${from} → ${to}: ${edgeTypesFor(from, to).join(", ")}.`,

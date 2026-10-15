@@ -286,5 +286,13 @@ describe("edge pair rules", () => {
   it("lists every edge type that fits a pair", () => {
     expect(edgeTypesFor("person", "topic")).toEqual(["involved_in", "can_help_with", "connects_to"]);
     expect(edgeTypesFor("group", "topic")).toEqual(["involved_in", "connects_to"]);
+    expect(edgeTypesFor("group", "meeting")).toEqual(["involved_in", "connects_to"]);
+  });
+
+  it("lets a group be involved in a meeting, but not a person (that's attended)", () => {
+    expect(() => validateEdgePair("involved_in", "group", "meeting")).not.toThrow();
+    expect(() => validateEdgePair("involved_in", "person", "meeting")).toThrow(
+      /involved_in must go person\/group → topic or group → meeting; got person → meeting/,
+    );
   });
 });

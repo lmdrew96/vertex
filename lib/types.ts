@@ -26,24 +26,32 @@ export const EDGE_TYPES: EdgeType[] = [
 
 // ── Pair rules (shared by the server and the edge form) ─────────────────────
 
-// Allowed from → to node types per edge type. `null` means any pair (connects_to).
-export const EDGE_RULES: Record<EdgeType, { from: NodeType[]; to: NodeType[] } | null> = {
-  member_of: { from: ["person"], to: ["group"] },
-  attended: { from: ["person"], to: ["meeting"] },
-  held_by: { from: ["meeting"], to: ["group"] },
-  about: { from: ["meeting"], to: ["topic"] },
-  involved_in: { from: ["person", "group"], to: ["topic"] },
-  can_help_with: { from: ["person"], to: ["topic"] },
-  introduced: { from: ["person"], to: ["person"] },
+// Allowed from → to node types per edge type: any listed rule may match, and within a rule
+// every `from` pairs with every `to`. `null` means any pair (connects_to).
+export type EdgeRule = { from: NodeType[]; to: NodeType[] };
+export const EDGE_RULES: Record<EdgeType, EdgeRule[] | null> = {
+  member_of: [{ from: ["person"], to: ["group"] }],
+  attended: [{ from: ["person"], to: ["meeting"] }],
+  held_by: [{ from: ["meeting"], to: ["group"] }],
+  about: [{ from: ["meeting"], to: ["topic"] }],
+  // A group can be involved in a meeting it didn't host (held_by is for the host).
+  involved_in: [
+    { from: ["person", "group"], to: ["topic"] },
+    { from: ["group"], to: ["meeting"] },
+  ],
+  can_help_with: [{ from: ["person"], to: ["topic"] }],
+  introduced: [{ from: ["person"], to: ["person"] }],
   connects_to: null,
+};
+
+export const edgeFits = (type: EdgeType, from: NodeType, to: NodeType): boolean => {
+  const rules = EDGE_RULES[type];
+  return !rules || rules.some((r) => r.from.includes(from) && r.to.includes(to));
 };
 
 // Edge types whose rule accepts this from → to pair.
 export const edgeTypesFor = (from: NodeType, to: NodeType): EdgeType[] =>
-  EDGE_TYPES.filter((t) => {
-    const rule = EDGE_RULES[t];
-    return !rule || (rule.from.includes(from) && rule.to.includes(to));
-  });
+  EDGE_TYPES.filter((t) => edgeFits(t, from, to));
 
 
 // ── Per-type fields ──────────────────────────────────────────────────────────
