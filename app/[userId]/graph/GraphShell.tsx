@@ -41,6 +41,7 @@ export function GraphShell({ userId, initialNodes, allTags, orphanIds, initialNo
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialNodeId);
   const [quickTab, setQuickTab] = useState<QuickTab>("closed");
   const [isMobile, setIsMobile] = useState(false);
+  const [graphVersion, setGraphVersion] = useState(0);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
@@ -76,6 +77,12 @@ export function GraphShell({ userId, initialNodes, allTags, orphanIds, initialNo
     [refreshAll],
   );
 
+  // An edge was archived, restored, or deleted: refetch the canvas, the panel, and orphans.
+  const handleGraphChanged = useCallback(() => {
+    setGraphVersion((v) => v + 1);
+    void refreshAll();
+  }, [refreshAll]);
+
   const handleNodeArchived = useCallback(
     (nodeId: string) => {
       setSelectedNodeId((current) => (current === nodeId ? null : current));
@@ -103,6 +110,8 @@ export function GraphShell({ userId, initialNodes, allTags, orphanIds, initialNo
           isMobile={isMobile}
           graphIsEmpty={nodes.length === 0}
           onLogFirstMeeting={() => setQuickTab("meeting")}
+          version={graphVersion}
+          onGraphChanged={handleGraphChanged}
         />
         <QuickCreate
           userId={userId}
@@ -118,6 +127,8 @@ export function GraphShell({ userId, initialNodes, allTags, orphanIds, initialNo
         nodeId={selectedNodeId}
         onSelectNode={setSelectedNodeId}
         onArchived={handleNodeArchived}
+        version={graphVersion}
+        onGraphChanged={handleGraphChanged}
         onClose={() => setSelectedNodeId(null)}
         isMobile={isMobile}
       />

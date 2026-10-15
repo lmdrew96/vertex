@@ -13,7 +13,7 @@ import {
 } from "@xyflow/react";
 import type { Edge as VertexEdge, EdgeType, NodeType, VertexNode } from "@/lib/types";
 import type { Subgraph } from "@/lib/graph";
-import { graphQueryAction } from "./actions";
+import { archiveEdgeAction, deleteEdgeAction, graphQueryAction } from "./actions";
 
 import { NODE_TYPE_COLOR, NODE_TYPE_TEXT } from "./typeColors";
 import { useTheme } from "../../ThemeToggle";
@@ -333,6 +333,17 @@ const s = {
     marginBottom: 4,
     textTransform: "uppercase" as const,
   },
+  popoverActions: { display: "flex", gap: 6, marginTop: 8 },
+  popoverBtn: {
+    fontFamily: "var(--font-body)",
+    fontSize: 11.5,
+    background: "transparent",
+    color: "var(--color-white)",
+    border: "1.5px solid var(--color-lavender)",
+    borderRadius: 9999,
+    padding: "3px 10px",
+    cursor: "pointer",
+  },
   mobileList: {
     padding: 16,
     overflowY: "auto" as const,
@@ -391,6 +402,8 @@ type GraphCanvasProps = {
   isMobile: boolean;
   graphIsEmpty: boolean;
   onLogFirstMeeting: () => void;
+  version: number; // bumps when edges change elsewhere, so the subgraph refetches
+  onGraphChanged: () => void;
 };
 
 export function GraphCanvas({
@@ -400,11 +413,14 @@ export function GraphCanvas({
   isMobile,
   graphIsEmpty,
   onLogFirstMeeting,
+  version,
+  onGraphChanged,
 }: GraphCanvasProps) {
   const [depth, setDepth] = useState(2);
   const [hideMeetings, setHideMeetings] = useState(false);
   const [subgraph, setSubgraph] = useState<Subgraph | null>(null);
   const [popover, setPopover] = useState<{ edge: VertexEdge; x: number; y: number } | null>(null);
+  const [popoverError, setPopoverError] = useState("");
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   const theme = useTheme();
@@ -417,8 +433,23 @@ export function GraphCanvas({
     setPopover(null);
     setHoveredNode(null);
     setHoveredEdge(null);
-    graphQueryAction(userId, { node_id: selectedNodeId, depth }).then(setSubgraph);
-  }, [userId, selectedNodeId, depth]);
+    graphQueryAction(userId, { node_id: selectedNodeId, depth })
+      .then(setSubgraph)
+      .catch((e) => console.error("[vertex] graph query failed:", e));
+  }, [userId, selectedNodeId, depth, version]);
+
+  // Archive hides the edge (restorable from the detail panel); delete is permanent.
+  const changeEdge = async (edge: VertexEdge, how: "archive" | "delete") => {
+    if (how === "delete" && !window.confirm(`Delete this ${edge.type.replace(/_/g, " ")} connection for good?`)) return;
+    try {
+      const result = await (how === "archive" ? archiveEdgeAction : deleteEdgeAction)(userId, edge.id);
+      if (!result.ok) return setPopoverError(result.error);
+      setPopover(null);
+      onGraphChanged();
+    } catch (e) {
+      setPopoverError(e instanceof Error ? e.message : `Couldn't ${how} this connection.`);
+    }
+  };
 
   const graph = useMemo(() => (subgraph ? displayGraph(subgraph, hideMeetings) : null), [subgraph, hideMeetings]);
   const rfNodes = useMemo(() => (subgraph && graph ? layout(subgraph, graph) : []), [subgraph, graph]);
@@ -568,7 +599,8 @@ export function GraphCanvas({
         onEdgeMouseLeave={() => setHoveredEdge(null)}
         onEdgeClick={(event, edge) => {
           const vertexEdge = subgraph?.edges.find((e) => e.id === edge.id);
-          if (vertexEdge && (vertexEdge.evidence || vertexEdge.notes)) {
+          if (vertexEdge) {
+            setPopoverError("");
             setPopover({ edge: vertexEdge, x: event.clientX, y: event.clientY });
           }
         }}
@@ -586,6 +618,19 @@ export function GraphCanvas({
           <p style={s.popoverType}>{popover.edge.type}</p>
           {popover.edge.evidence && <p style={{ margin: "0 0 4px 0" }}>{popover.edge.evidence}</p>}
           {popover.edge.notes && <p style={{ margin: 0, opacity: 0.8 }}>{popover.edge.notes}</p>}
+          <div style={s.popoverActions}>
+            <button type="button" style={s.popoverBtn} onClick={() => void changeEdge(popover.edge, "archive")}>
+              Archive
+            </button>
+            <button type="button" style={s.popoverBtn} onClick={() => void changeEdge(popover.edge, "delete")}>
+              Delete
+            </button>
+          </div>
+          {popoverError && (
+            <p role="alert" style={{ margin: "6px 0 0", color: "var(--color-danger)" }}>
+              {popoverError}
+            </p>
+          )}
         </div>
       )}
     </div>

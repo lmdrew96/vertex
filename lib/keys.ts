@@ -12,6 +12,10 @@ export const allNodesKey = (userId: string) =>
 export const allEdgesKey = (userId: string) =>
   `vertex:edges:all:${userId}`;
 
+// Archived edges: out of the indexes above (so nothing traverses them) but kept for restore.
+export const archivedEdgesKey = (userId: string) =>
+  `vertex:edges:archived:${userId}`;
+
 export const adjFromKey = (userId: string, nodeId: string) =>
   `vertex:adj:from:${userId}:${nodeId}`;
 

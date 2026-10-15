@@ -113,6 +113,7 @@ export interface Edge {
   evidence?: string;
   notes?: string;
   createdAt: string;
+  archivedAt?: string; // set while archived; see archiveEdge in lib/edges.ts
 }
 
 // ── Inputs ───────────────────────────────────────────────────────────────────

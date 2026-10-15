@@ -1,4 +1,4 @@
-import { deleteEdge, createEdge } from "./edges";
+import { archiveEdge, createEdge, deleteEdge, getArchivedEdges, restoreEdge } from "./edges";
 import { graphQuery, graphRender, getNodeWithEdges } from "./graph";
 import {
   ALLOWED_TYPES,
@@ -201,11 +201,35 @@ export const TOOLS = [
   {
     name: "vtx_edge_delete",
     description:
-      "Remove an edge between two nodes. If either endpoint becomes isolated, it's returned to the orphans set.",
+      "Permanently remove an edge (active or archived). If either endpoint becomes isolated, it's returned to the orphans set. To hide an edge but keep it, use vtx_edge_archive.",
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "string", description: "Edge ID." },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "vtx_edge_archive",
+    description:
+      "Archive an edge: it stays stored but drops out of traversals, briefs, who-knows, and orphan checks (an endpoint left with no active edges becomes an orphan). vtx_node_get lists a node's archived edges; vtx_edge_restore brings one back.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Edge ID." },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "vtx_edge_restore",
+    description:
+      "Restore an archived edge. Both endpoints must still exist; an archived endpoint is reactivated (listed under reactivated).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Edge ID (from archivedEdges in vtx_node_get)." },
       },
       required: ["id"],
     },
@@ -514,8 +538,11 @@ export const dispatchTool = async (
           `Node '${id}' not found. Use vtx_node_search to find the right ID.`,
         );
       }
-      const attachments = (await listNodeAttachments(userId, result.node.id)).map(summarize);
-      return textContent({ ...result, attachments });
+      const [attachments, archivedEdges] = await Promise.all([
+        listNodeAttachments(userId, result.node.id).then((atts) => atts.map(summarize)),
+        getArchivedEdges(userId, result.node.id),
+      ]);
+      return textContent({ ...result, attachments, ...(archivedEdges.length > 0 ? { archivedEdges } : {}) });
     }
 
     case "vtx_node_update": {
@@ -620,6 +647,26 @@ export const dispatchTool = async (
         throw new ToolError(-32602, `Edge '${id}' not found.`);
       }
       return textContent(`Deleted edge: ${id}`);
+    }
+
+    case "vtx_edge_archive": {
+      const id = asString(args.id);
+      if (!id) throw new ToolError(-32602, "vtx_edge_archive requires id");
+      const edge = await archiveEdge(userId, id);
+      if (!edge) throw new ToolError(-32602, `Edge '${id}' not found.`);
+      return textContent({ archived: edge, hint: "Restore it with vtx_edge_restore." });
+    }
+
+    case "vtx_edge_restore": {
+      const id = asString(args.id);
+      if (!id) throw new ToolError(-32602, "vtx_edge_restore requires id");
+      try {
+        const result = await restoreEdge(userId, id);
+        if (!result) throw new Error(`Edge '${id}' not found.`);
+        return textContent(result);
+      } catch (e) {
+        throw new ToolError(-32602, e instanceof Error ? e.message : "Failed to restore edge");
+      }
     }
 
     case "vtx_graph_query": {

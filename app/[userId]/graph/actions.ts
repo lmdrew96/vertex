@@ -6,10 +6,10 @@ import { brief, type BriefResult } from "@/lib/brief";
 import { getDashboard, type Dashboard } from "@/lib/dashboard";
 import { logMeeting, type MeetingLogInput, type MeetingLogResult } from "@/lib/meetings";
 import { R2NotConfiguredError } from "@/lib/r2";
-import { archiveNode, getAllTags, getOrphanIds, searchNodes, type SearchOpts } from "@/lib/nodes";
-import { createEdge, deleteEdge } from "@/lib/edges";
+import { archiveNode, getAllTags, getNode, getOrphanIds, searchNodes, type SearchOpts } from "@/lib/nodes";
+import { archiveEdge, createEdge, deleteEdge, getArchivedEdges, restoreEdge } from "@/lib/edges";
 import { createNode } from "@/lib/nodes";
-import { graphQuery } from "@/lib/graph";
+import { getNodeWithEdges, graphQuery } from "@/lib/graph";
 import type { Edge, EdgeCreateInput, EdgeType, NodeCreateInput, VertexNode } from "@/lib/types";
 
 // Every action receives the URL token and resolves it to the graph namespace server-side,
@@ -63,6 +63,21 @@ export async function deleteEdgeAction(token: string, edgeId: string): Promise<A
   });
 }
 
+// Archived edges leave the graph but can come back; delete is the permanent option.
+export async function archiveEdgeAction(token: string, edgeId: string): Promise<ActionResult<null>> {
+  return asResult(async () => {
+    if (!(await archiveEdge(await graphFor(token), edgeId))) throw new Error("That connection is already gone.");
+    return null;
+  });
+}
+
+export async function restoreEdgeAction(token: string, edgeId: string): Promise<ActionResult<null>> {
+  return asResult(async () => {
+    if (!(await restoreEdge(await graphFor(token), edgeId))) throw new Error("That connection is already gone.");
+    return null;
+  });
+}
+
 export async function createNodeAction(token: string, input: NodeCreateInput): Promise<ActionResult<VertexNode>> {
   return asResult(async () => createNode(await graphFor(token), input));
 }
@@ -83,8 +98,19 @@ export async function deleteAttachmentAction(token: string, attachmentId: string
   });
 }
 
+// One direct edge as the detail panel lists it. `direction` is relative to the panel's node.
+export type Connection = {
+  edgeId: string;
+  type: EdgeType;
+  direction: "out" | "in";
+  other: { id: string; name: string; type: VertexNode["type"] };
+  notes?: string;
+};
+
 export type NodeDetail = {
   brief: Extract<BriefResult, { status: "ok" }>;
+  connections: Connection[];
+  archivedConnections: Connection[];
   attachments: AttachmentView[];
   attachmentsError?: string; // e.g. R2 not configured — the rest of the panel still works
 };
@@ -92,14 +118,42 @@ export type NodeDetail = {
 // Everything the detail panel shows: fields, meeting timeline, people/groups/topics, files.
 export async function getNodeDetailAction(token: string, nodeId: string): Promise<NodeDetail | null> {
   const graphId = await graphFor(token);
-  const result = await brief(graphId, nodeId, 100);
+  const [result, withEdges, archived] = await Promise.all([
+    brief(graphId, nodeId, 100),
+    getNodeWithEdges(graphId, nodeId),
+    getArchivedEdges(graphId, nodeId),
+  ]);
   if (!result || result.status !== "ok") return null;
+
+  const toConnection = (edge: Edge, other: VertexNode): Connection => ({
+    edgeId: edge.id,
+    type: edge.type,
+    direction: edge.from === result.node.id ? "out" : "in",
+    other: { id: other.id, name: other.name, type: other.type },
+    ...(edge.notes ? { notes: edge.notes } : {}),
+  });
+  const connections = withEdges
+    ? [
+        ...withEdges.edges.outgoing.map(({ edge, target }) => toConnection(edge, target)),
+        ...withEdges.edges.incoming.map(({ edge, source }) => toConnection(edge, source)),
+      ].sort((a, b) => a.type.localeCompare(b.type) || a.other.name.localeCompare(b.other.name))
+    : [];
+  const archivedConnections = (
+    await Promise.all(
+      archived.map(async (edge) => {
+        const other = await getNode(graphId, edge.from === result.node.id ? edge.to : edge.from);
+        return other ? toConnection(edge, other) : null;
+      }),
+    )
+  ).filter((c): c is Connection => c !== null);
+
+  const base = { brief: result, connections, archivedConnections };
   try {
-    return { brief: result, attachments: await listNodeAttachmentViews(graphId, result.node.id) };
+    return { ...base, attachments: await listNodeAttachmentViews(graphId, result.node.id) };
   } catch (e) {
     if (!(e instanceof R2NotConfiguredError)) console.error("[vertex] listing attachments failed:", e);
     return {
-      brief: result,
+      ...base,
       attachments: [],
       attachmentsError: e instanceof Error ? e.message : "Couldn't load files.",
     };

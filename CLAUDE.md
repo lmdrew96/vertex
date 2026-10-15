@@ -114,6 +114,7 @@ All keys are namespaced `vertex:{type}:{userId}:{id}`. `lib/keys.ts` is the sing
 - `vertex:nodes:all:{userId}` / `vertex:edges:all:{userId}` → SETs of IDs
 - `vertex:adj:from:{userId}:{nodeId}` / `vertex:adj:to:{userId}:{nodeId}` → SETs of edgeIds
 - `vertex:orphans:{userId}` → SET of nodeIds with zero edges
+- `vertex:edges:archived:{userId}` → SET of archived edgeIds. An archived edge keeps its record (with `archivedAt`) but is removed from `edges:all` and both adjacency sets, so nothing traverses it. `restoreEdge` puts it back.
 
 ### Accounts and tokens
 
@@ -134,7 +135,7 @@ Nodes get slugs (`"Art Trembanis"` → `art-trembanis`, then `-2`, `-3` on colli
 
 ### Tools
 
-All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`, `vtx_brief`, `vtx_who_knows`, `vtx_attachment_request_upload`, `vtx_attachment_confirm`, `vtx_attachment_get`, `vtx_attachment_link`, `vtx_attachment_delete`, `vtx_attachment_extract`, `vtx_attachment_set_text`.
+All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_edge_archive`, `vtx_edge_restore`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`, `vtx_brief`, `vtx_who_knows`, `vtx_attachment_request_upload`, `vtx_attachment_confirm`, `vtx_attachment_get`, `vtx_attachment_link`, `vtx_attachment_delete`, `vtx_attachment_extract`, `vtx_attachment_set_text`.
 
 `vtx_node_search` matches name > description > meeting notes > attachment text and reports `matchedIn`. The UI's `searchNodes` wraps the same logic and returns plain nodes.
 

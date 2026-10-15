@@ -51,16 +51,19 @@ const { kv, sets, fakeRedis } = vi.hoisted(() => {
 vi.mock("./redis", () => ({ redis: fakeRedis }));
 
 import {
+  archiveEdge,
   createEdge,
   deleteEdge,
+  getArchivedEdges,
   edgeTypesFor,
   getEdge,
   getEdgesFrom,
   getEdgesTo,
+  restoreEdge,
   validateEdgePair,
 } from "./edges";
 import { archiveNode, createNode, getNode } from "./nodes";
-import { adjFromKey, adjToKey, orphansKey } from "./keys";
+import { adjFromKey, adjToKey, allEdgesKey, archivedEdgesKey, orphansKey } from "./keys";
 
 const USER = "user_test";
 
@@ -294,5 +297,57 @@ describe("edge pair rules", () => {
     expect(() => validateEdgePair("involved_in", "person", "meeting")).toThrow(
       /involved_in must go person\/group → topic or group → meeting; got person → meeting/,
     );
+  });
+});
+
+describe("archiveEdge / restoreEdge", () => {
+  it("hides the edge from adjacency and orphans the ends, then restores it", async () => {
+    const a = await mkNode("Node A");
+    const b = await mkNode("Node B");
+    const { edge } = await createEdge(USER, { from: a.id, to: b.id, type: "connects_to", notes: "kept" });
+
+    const archived = await archiveEdge(USER, edge.id);
+    expect(archived?.archivedAt).toBeTruthy();
+    expect(await getEdgesFrom(USER, a.id)).toEqual([]);
+    expect(sets.get(allEdgesKey(USER))?.has(edge.id)).toBe(false);
+    expect(sets.get(archivedEdgesKey(USER))?.has(edge.id)).toBe(true);
+    expect(sets.get(orphansKey(USER))?.has(a.id)).toBe(true);
+    expect((await getArchivedEdges(USER, b.id)).map((e) => e.id)).toEqual([edge.id]);
+
+    const restored = await restoreEdge(USER, edge.id);
+    expect(restored?.edge.archivedAt).toBeUndefined();
+    expect(restored?.edge.notes).toBe("kept");
+    expect((await getEdgesFrom(USER, a.id)).map((e) => e.id)).toEqual([edge.id]);
+    expect(sets.get(archivedEdgesKey(USER))?.has(edge.id)).toBe(false);
+    expect(sets.get(orphansKey(USER))?.has(a.id)).toBe(false);
+    expect(await getArchivedEdges(USER, a.id)).toEqual([]);
+  });
+
+  it("reactivates an archived endpoint on restore", async () => {
+    const a = await mkNode("Node A");
+    const b = await mkNode("Node B");
+    const { edge } = await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
+    await archiveEdge(USER, edge.id);
+    await archiveNode(USER, b.id);
+
+    const restored = await restoreEdge(USER, edge.id);
+    expect(restored?.reactivated).toEqual([b.id]);
+    expect((await getNode(USER, b.id))?.status).toBe("active");
+  });
+
+  it("deleting an archived edge removes it for good", async () => {
+    const a = await mkNode("Node A");
+    const b = await mkNode("Node B");
+    const { edge } = await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
+    await archiveEdge(USER, edge.id);
+
+    expect(await deleteEdge(USER, edge.id)).toBe(true);
+    expect(await getEdge(USER, edge.id)).toBeNull();
+    expect(sets.get(archivedEdgesKey(USER))?.has(edge.id)).toBe(false);
+  });
+
+  it("returns null for an unknown edge", async () => {
+    expect(await archiveEdge(USER, "nope")).toBeNull();
+    expect(await restoreEdge(USER, "nope")).toBeNull();
   });
 });

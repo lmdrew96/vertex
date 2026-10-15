@@ -3,6 +3,7 @@ import {
   adjFromKey,
   adjToKey,
   allEdgesKey,
+  archivedEdgesKey,
   edgeKey,
   orphansKey,
 } from "./keys";
@@ -114,6 +115,7 @@ export const deleteEdge = async (
   await Promise.all([
     redis.del(edgeKey(userId, edgeId)),
     redis.srem(allEdgesKey(userId), edgeId),
+    redis.srem(archivedEdgesKey(userId), edgeId),
     redis.srem(adjFromKey(userId, edge.from), edgeId),
     redis.srem(adjToKey(userId, edge.to), edgeId),
   ]);
@@ -125,6 +127,69 @@ export const deleteEdge = async (
   ]);
 
   return true;
+};
+
+// Hides an edge without losing it: it leaves the active indexes, so traversals, briefs,
+// and orphan checks skip it, and restoreEdge can bring it back. Idempotent.
+export const archiveEdge = async (userId: string, edgeId: string): Promise<Edge | null> => {
+  const edge = await getEdge(userId, edgeId);
+  if (!edge) return null;
+  if (edge.archivedAt) return edge;
+
+  const next: Edge = { ...edge, archivedAt: new Date().toISOString() };
+  await Promise.all([
+    redis.set(edgeKey(userId, edgeId), next),
+    redis.sadd(archivedEdgesKey(userId), edgeId),
+    redis.srem(allEdgesKey(userId), edgeId),
+    redis.srem(adjFromKey(userId, edge.from), edgeId),
+    redis.srem(adjToKey(userId, edge.to), edgeId),
+  ]);
+  await Promise.all([clearConnected(userId, edge.from), clearConnected(userId, edge.to)]);
+  return next;
+};
+
+// Puts an archived edge back, like creating it again: both ends must still exist,
+// and an archived endpoint is reactivated.
+export const restoreEdge = async (
+  userId: string,
+  edgeId: string,
+): Promise<{ edge: Edge; reactivated: string[] } | null> => {
+  const edge = await getEdge(userId, edgeId);
+  if (!edge) return null;
+  if (!edge.archivedAt) return { edge, reactivated: [] };
+
+  const [fromNode, toNode] = await Promise.all([getNode(userId, edge.from), getNode(userId, edge.to)]);
+  const missing = [fromNode ? null : edge.from, toNode ? null : edge.to].filter(Boolean);
+  if (missing.length > 0) {
+    throw new Error(`Can't restore this edge: node ${missing.map((id) => `'${id}'`).join(" and ")} no longer exists.`);
+  }
+
+  const next: Edge = { ...edge };
+  delete next.archivedAt;
+  await Promise.all([
+    redis.set(edgeKey(userId, edgeId), next),
+    redis.srem(archivedEdgesKey(userId), edgeId),
+    redis.sadd(allEdgesKey(userId), edgeId),
+    redis.sadd(adjFromKey(userId, edge.from), edgeId),
+    redis.sadd(adjToKey(userId, edge.to), edgeId),
+    redis.srem(orphansKey(userId), edge.from),
+    redis.srem(orphansKey(userId), edge.to),
+    markConnected(userId, edge.from),
+    markConnected(userId, edge.to),
+  ]);
+
+  const reactivated = [fromNode!, toNode!].filter((n) => n.status === "archived").map((n) => n.id);
+  await Promise.all(reactivated.map((id) => reactivateNode(userId, id)));
+  return { edge: next, reactivated };
+};
+
+// Archived edges touching a node, newest archive first.
+export const getArchivedEdges = async (userId: string, nodeId: string): Promise<Edge[]> => {
+  const ids = (await redis.smembers(archivedEdgesKey(userId))) as string[];
+  const edges = await Promise.all(ids.map((id) => getEdge(userId, id)));
+  return edges
+    .filter((e): e is Edge => e !== null && (e.from === nodeId || e.to === nodeId))
+    .sort((a, b) => (b.archivedAt ?? "").localeCompare(a.archivedAt ?? ""));
 };
 
 // ── Adjacency queries ────────────────────────────────────────────────────────

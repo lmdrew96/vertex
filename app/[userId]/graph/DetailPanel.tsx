@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Markdown } from "../../Markdown";
-import { archiveNodeAction, getNodeDetailAction, type NodeDetail } from "./actions";
+import {
+  archiveEdgeAction,
+  archiveNodeAction,
+  deleteEdgeAction,
+  getNodeDetailAction,
+  restoreEdgeAction,
+  type ActionResult,
+  type Connection,
+  type NodeDetail,
+} from "./actions";
 import dynamic from "next/dynamic";
 
 // Client-only: keeps heic2any and the upload code out of the edge page's server bundle.
@@ -171,6 +180,33 @@ const s = {
     cursor: "pointer",
     width: "100%",
   },
+  connRow: { display: "flex", alignItems: "center", gap: 6, marginBottom: 6 },
+  connMain: {
+    flex: 1,
+    minWidth: 0,
+    textAlign: "left" as const,
+    fontFamily: "var(--font-body)",
+    fontSize: 13,
+    color: "var(--color-ink)",
+    background: "var(--color-surface)",
+    border: "none",
+    borderRadius: 8,
+    padding: "7px 10px",
+    cursor: "pointer",
+    overflowWrap: "anywhere" as const,
+  },
+  connType: { fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-teal-deep)" },
+  connBtn: {
+    fontFamily: "var(--font-body)",
+    fontSize: 11.5,
+    background: "none",
+    color: "var(--color-ink)",
+    border: "1.5px solid var(--color-lavender)",
+    borderRadius: 9999,
+    padding: "3px 9px",
+    cursor: "pointer",
+    flexShrink: 0,
+  },
   footerError: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-danger)", margin: "10px 0 0" },
   loading: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--color-teal-deep)", padding: 22 },
 };
@@ -193,11 +229,28 @@ type DetailPanelProps = {
   onArchived: (nodeId: string) => void;
   onClose: () => void;
   isMobile: boolean;
+  version: number; // bumps when edges change, so the panel reloads
+  onGraphChanged: () => void;
 };
 
-export function DetailPanel({ userId, nodeId, onSelectNode, onArchived, onClose, isMobile }: DetailPanelProps) {
+// "member_of → PSAC" from Art's side, "← member_of Art Trembanis" from PSAC's.
+const connectionLabel = (c: Connection): string =>
+  c.direction === "out" ? `${c.type.replace(/_/g, " ")} →` : `← ${c.type.replace(/_/g, " ")}`;
+
+export function DetailPanel({
+  userId,
+  nodeId,
+  onSelectNode,
+  onArchived,
+  onClose,
+  isMobile,
+  version,
+  onGraphChanged,
+}: DetailPanelProps) {
   const [data, setData] = useState<NodeDetail | null>(null);
   const [error, setError] = useState("");
+  const [connError, setConnError] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const load = useCallback(async () => {
     if (!nodeId) {
@@ -210,7 +263,27 @@ export function DetailPanel({ userId, nodeId, onSelectNode, onArchived, onClose,
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load this node.");
     }
-  }, [userId, nodeId]);
+    // version is a refetch signal, not an input.
+  }, [userId, nodeId, version]);
+
+  // Archive and restore are reversible; delete asks first.
+  const changeConnection = async (c: Connection, how: "archive" | "restore" | "delete") => {
+    const what = `${c.type.replace(/_/g, " ")} connection with "${c.other.name}"`;
+    if (how === "delete" && !window.confirm(`Delete the ${what} for good?`)) return;
+    const run: Record<typeof how, (t: string, id: string) => Promise<ActionResult<null>>> = {
+      archive: archiveEdgeAction,
+      restore: restoreEdgeAction,
+      delete: deleteEdgeAction,
+    };
+    try {
+      const result = await run[how](userId, c.edgeId);
+      if (!result.ok) return setConnError(result.error);
+      setConnError("");
+      onGraphChanged();
+    } catch (e) {
+      setConnError(e instanceof Error ? e.message : `Couldn't ${how} the ${what}.`);
+    }
+  };
 
   useEffect(() => {
     void load();
@@ -399,6 +472,55 @@ export function DetailPanel({ userId, nodeId, onSelectNode, onArchived, onClose,
                 </div>
               </div>
             )}
+
+            <div style={s.section}>
+              <p style={s.sectionLabel}>Connections ({data!.connections.length})</p>
+              {data!.connections.length === 0 && <p style={s.empty}>No direct connections.</p>}
+              {data!.connections.map((c) => (
+                <div key={c.edgeId} style={s.connRow}>
+                  <button type="button" style={s.connMain} onClick={() => onSelectNode(c.other.id)} title={c.notes}>
+                    <span style={s.connType}>{connectionLabel(c)}</span> {c.other.name}
+                  </button>
+                  <button type="button" style={s.connBtn} onClick={() => void changeConnection(c, "archive")}>
+                    Archive
+                  </button>
+                  <button type="button" style={s.connBtn} onClick={() => void changeConnection(c, "delete")}>
+                    Delete
+                  </button>
+                </div>
+              ))}
+              {data!.archivedConnections.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    style={{ ...s.connBtn, marginTop: 4 }}
+                    aria-expanded={showArchived}
+                    onClick={() => setShowArchived(!showArchived)}
+                  >
+                    {showArchived ? "Hide" : "Show"} archived ({data!.archivedConnections.length})
+                  </button>
+                  {showArchived &&
+                    data!.archivedConnections.map((c) => (
+                      <div key={c.edgeId} style={{ ...s.connRow, opacity: 0.75, marginTop: 6 }}>
+                        <span style={{ ...s.connMain, cursor: "default" }} title={c.notes}>
+                          <span style={s.connType}>{connectionLabel(c)}</span> {c.other.name}
+                        </span>
+                        <button type="button" style={s.connBtn} onClick={() => void changeConnection(c, "restore")}>
+                          Restore
+                        </button>
+                        <button type="button" style={s.connBtn} onClick={() => void changeConnection(c, "delete")}>
+                          Delete
+                        </button>
+                      </div>
+                    ))}
+                </>
+              )}
+              {connError && (
+                <p role="alert" style={{ ...s.footerError, marginTop: 6 }}>
+                  {connError}
+                </p>
+              )}
+            </div>
 
             {node.tags.length > 0 && (
               <div style={s.section}>
