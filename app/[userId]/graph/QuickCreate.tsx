@@ -71,6 +71,12 @@ const s = {
     cursor: "pointer",
     alignSelf: "flex-start" as const,
   },
+  pairHint: {
+    fontFamily: "var(--font-body)",
+    fontSize: 12,
+    color: "var(--color-teal-deep)",
+    margin: 0,
+  },
   error: {
     fontFamily: "var(--font-body)",
     color: "var(--color-danger)",
@@ -268,7 +274,8 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
         <div style={s.form}>
           <datalist id="quickcreate-node-names">
             {nodes.map((n) => (
-              <option key={n.id} value={n.name} />
+              // The label shows the type, so "PSAC" (group) and "2026-10-13 · PSAC" (meeting) don't blur together.
+              <option key={n.id} value={n.name} label={NODE_TYPE_LABEL[n.type]} />
             ))}
           </datalist>
           <div style={s.row}>
@@ -287,6 +294,12 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
               onChange={(e) => setToName(e.target.value)}
             />
           </div>
+          {fromNode && toNode && (
+            <p style={s.pairHint}>
+              {fromNode.name} ({NODE_TYPE_LABEL[fromNode.type]}) → {toNode.name} ({NODE_TYPE_LABEL[toNode.type]}):{" "}
+              {allowedTypes.join(", ")}
+            </p>
+          )}
           <select
             style={s.input}
             value={chosenType}
