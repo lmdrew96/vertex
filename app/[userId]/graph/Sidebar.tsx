@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { NODE_TYPES, type NodeType, type VertexNode } from "@/lib/types";
 import { searchNodesAction } from "./actions";
 import { NODE_TYPE_COLOR, NODE_TYPE_LABEL, NODE_TYPE_TEXT } from "./typeColors";
-import { ThemeToggle } from "../../ThemeToggle";
+import { AppNav } from "../../AppNav";
 
 
 const s = {
@@ -193,9 +193,9 @@ export function Sidebar({
   return (
     <div style={{ ...s.sidebar, width: isMobile ? "100%" : s.sidebar.width, height: isMobile ? "auto" : s.sidebar.height, position: isMobile ? "static" : s.sidebar.position }}>
       <div style={s.section}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-          <h1 style={s.h1}>Vertex</h1>
-          <ThemeToggle />
+        <h1 style={{ ...s.h1, margin: "0 0 8px 0" }}>Vertex</h1>
+        <div style={{ margin: "0 0 14px -8px" }}>
+          <AppNav token={userId} current="graph" />
         </div>
         <input
           style={s.input}

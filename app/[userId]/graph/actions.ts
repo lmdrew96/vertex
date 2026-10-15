@@ -3,6 +3,7 @@
 import { deleteAttachment, listNodeAttachmentViews, type AttachmentView } from "@/lib/attachments";
 import { resolveGraphId } from "@/lib/auth";
 import { brief, type BriefResult } from "@/lib/brief";
+import { getDashboard, type Dashboard } from "@/lib/dashboard";
 import { logMeeting, type MeetingLogInput, type MeetingLogResult } from "@/lib/meetings";
 import { R2NotConfiguredError } from "@/lib/r2";
 import { archiveNode, getAllTags, getOrphanIds, searchNodes, type SearchOpts } from "@/lib/nodes";
@@ -110,4 +111,9 @@ export async function logMeetingAction(
   input: MeetingLogInput,
 ): Promise<ActionResult<MeetingLogResult>> {
   return asResult(async () => logMeeting(await graphFor(token), input));
+}
+
+// The signed-in home page: recent meetings and threads.
+export async function getDashboardAction(token: string): Promise<ActionResult<Dashboard>> {
+  return asResult(async () => getDashboard(await graphFor(token)));
 }

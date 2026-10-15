@@ -5,10 +5,13 @@ import { GraphShell } from "./GraphShell";
 
 export const runtime = "edge";
 
-type PageProps = { params: Promise<{ userId: string }> };
+type PageProps = {
+  params: Promise<{ userId: string }>;
+  searchParams: Promise<{ node?: string | string[] }>;
+};
 
-export default async function GraphPage({ params }: PageProps) {
-  const { userId: token } = await params;
+export default async function GraphPage({ params, searchParams }: PageProps) {
+  const [{ userId: token }, { node }] = await Promise.all([params, searchParams]);
   const userId = await resolveGraphId(token);
   if (!userId) notFound();
 
@@ -24,6 +27,8 @@ export default async function GraphPage({ params }: PageProps) {
       initialNodes={initialNodes}
       allTags={allTags}
       orphanIds={orphanIds}
+      // ?node=<id> (from the dashboard) opens the graph focused on that node.
+      initialNodeId={initialNodes.some((n) => n.id === node) ? (node as string) : null}
     />
   );
 }

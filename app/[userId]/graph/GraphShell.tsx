@@ -31,13 +31,14 @@ type GraphShellProps = {
   initialNodes: VertexNode[];
   allTags: string[];
   orphanIds: string[];
+  initialNodeId: string | null;
 };
 
-export function GraphShell({ userId, initialNodes, allTags, orphanIds }: GraphShellProps) {
+export function GraphShell({ userId, initialNodes, allTags, orphanIds, initialNodeId }: GraphShellProps) {
   const [nodes, setNodes] = useState(initialNodes);
   const [tags, setTags] = useState(allTags);
   const [orphans, setOrphans] = useState(orphanIds);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialNodeId);
   const [quickTab, setQuickTab] = useState<QuickTab>("closed");
   const [isMobile, setIsMobile] = useState(false);
 
