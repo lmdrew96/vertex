@@ -58,11 +58,19 @@ const r2 = vi.hoisted(() => ({
   failDelete: false,
 }));
 
+// Stored bytes for extraction reads; text/plain files go through the real extractor.
+const ex = vi.hoisted(() => ({ fail: null as string | null, calls: 0 }));
+
 vi.mock("./r2", () => ({
   R2NotConfiguredError: class extends Error {},
   presignPutUrl: async (key: string) => `https://r2.test/put/${key}`,
   presignGetUrl: async (key: string) => `https://r2.test/get/${key}`,
   headObject: async (key: string) => r2.objects.get(key) ?? null,
+  getObjectBytes: async () => {
+    ex.calls++;
+    if (ex.fail) throw new Error(ex.fail);
+    return new TextEncoder().encode("Extracted: Truman scholarship timeline.");
+  },
   deleteObject: async (key: string) => {
     if (r2.failDelete) throw new Error("R2 DELETE failed (500)");
     r2.deleted.push(key);
@@ -80,6 +88,7 @@ import {
   safeFilename,
 } from "./attachments";
 import { brief, whoKnows } from "./brief";
+import { confirmAndExtract, extractAttachment } from "./extract";
 import { pendingUploadKey } from "./keys";
 import { logMeeting } from "./meetings";
 import { createNode, searchNodeHits } from "./nodes";
@@ -92,6 +101,8 @@ beforeEach(() => {
   r2.objects.clear();
   r2.deleted.length = 0;
   r2.failDelete = false;
+  ex.fail = null;
+  ex.calls = 0;
 });
 
 const pdf = { filename: "PSAC agenda.pdf", contentType: "application/pdf", size: 2048 };
@@ -131,6 +142,16 @@ describe("requestUpload", () => {
   });
 });
 
+const txt = { filename: "notes.txt", contentType: "text/plain", size: 40 };
+
+// Same as upload(), but through the MCP path that extracts text when none is given.
+const uploadAndExtract = async (nodeIds: string[], text?: string) => {
+  const req = await requestUpload(USER, { nodeIds, ...txt });
+  const pending = kv.get(pendingUploadKey(USER, req.attachmentId)) as { r2Key: string };
+  r2.objects.set(pending.r2Key, { contentType: txt.contentType, size: txt.size });
+  return confirmAndExtract(USER, req.attachmentId, text);
+};
+
 describe("confirmUpload", () => {
   it("saves Coru-provided text as 'provided' and indexes the file on every node", async () => {
     const art = await createNode(USER, { type: "person", name: "Art" });
@@ -141,9 +162,38 @@ describe("confirmUpload", () => {
     expect((await listNodeAttachments(USER, psac.id)).map((a) => a.id)).toEqual([att.id]);
   });
 
-  it("leaves extraction pending when no text is given", async () => {
+  it("extracts text on the server when none is given", async () => {
     const art = await createNode(USER, { type: "person", name: "Art" });
-    expect((await upload([art.id])).extractStatus).toBe("pending");
+    const att = await uploadAndExtract([art.id]);
+    expect(att.extractStatus).toBe("done");
+    expect(att.extractedText).toBe("Extracted: Truman scholarship timeline.");
+    expect((await getAttachment(USER, att.id))?.extractStatus).toBe("done");
+  });
+
+  it("keeps the upload and records the reason when extraction fails", async () => {
+    const art = await createNode(USER, { type: "person", name: "Art" });
+    ex.fail = "Claude API error 529: overloaded";
+    const att = await uploadAndExtract([art.id]);
+    expect(att).toMatchObject({ extractStatus: "failed", extractError: "Claude API error 529: overloaded" });
+    expect((await listNodeAttachments(USER, art.id)).map((a) => a.id)).toEqual([att.id]);
+  });
+
+  it("retries a failed extraction and clears the error", async () => {
+    const art = await createNode(USER, { type: "person", name: "Art" });
+    ex.fail = "timeout";
+    const att = await uploadAndExtract([art.id]);
+    ex.fail = null;
+    const retried = await extractAttachment(USER, att.id);
+    expect(retried.extractStatus).toBe("done");
+    expect(retried).not.toHaveProperty("extractError");
+  });
+
+  it("never re-extracts text Coru provided", async () => {
+    const art = await createNode(USER, { type: "person", name: "Art" });
+    const att = await uploadAndExtract([art.id], "Coru's transcription");
+    expect(att.extractStatus).toBe("provided");
+    expect(ex.calls).toBe(0);
+    await expect(extractAttachment(USER, att.id)).rejects.toThrow(/provided/);
   });
 
   it("asks for the PUT when nothing was uploaded, and keeps the request alive", async () => {

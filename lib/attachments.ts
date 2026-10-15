@@ -49,7 +49,7 @@ export const safeFilename = (name: string): string => {
   return cleaned || "file";
 };
 
-const truncate = (text: string): string =>
+export const truncateExtracted = (text: string): string =>
   text.length > MAX_EXTRACTED_CHARS ? text.slice(0, MAX_EXTRACTED_CHARS) : text;
 
 const assertNodesExist = async (userId: string, nodeIds: string[]): Promise<void> => {
@@ -107,7 +107,9 @@ export const requestUpload = async (
 /**
  * Confirm a finished upload. Type and size come from a HEAD on the stored object, never
  * the client; anything off gets deleted. With `extractedText` (Coru already read the
- * file), it's saved as "provided"; otherwise extraction is left "pending".
+ * file), it's saved as "provided"; otherwise it's saved as "pending" and the caller runs
+ * extraction (confirmAndExtract in lib/extract.ts), which keeps the PDF/AI libraries out of
+ * every bundle that only reads attachments.
  */
 export const confirmUpload = async (
   userId: string,
@@ -138,7 +140,7 @@ export const confirmUpload = async (
   const att: Attachment = {
     ...pending,
     size: head.size ?? pending.size,
-    ...(text ? { extractedText: truncate(text) } : {}),
+    ...(text ? { extractedText: truncateExtracted(text) } : {}),
     extractStatus: text ? "provided" : "pending",
   };
   await Promise.all([

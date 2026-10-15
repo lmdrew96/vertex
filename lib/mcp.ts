@@ -2,7 +2,6 @@ import { deleteEdge, createEdge } from "./edges";
 import { graphQuery, graphRender, getNodeWithEdges } from "./graph";
 import {
   ALLOWED_TYPES,
-  confirmUpload,
   deleteAttachment,
   getAttachmentWithUrl,
   linkAttachment,
@@ -11,6 +10,7 @@ import {
   summarize,
 } from "./attachments";
 import { brief, whoKnows } from "./brief";
+import { confirmAndExtract, extractAttachment } from "./extract";
 import { R2NotConfiguredError } from "./r2";
 import { logMeeting } from "./meetings";
 import {
@@ -329,7 +329,7 @@ export const TOOLS = [
   {
     name: "vtx_attachment_confirm",
     description:
-      "Step 3 of attaching a file, after the bytes are PUT to upload_url. Checks the stored file's real type and size, then saves the attachment. If you've already read the file in chat, pass its full text as extracted_text (handwriting transcribed, nothing summarized). That makes it searchable right away, with no server-side extraction. Confirming twice is harmless.",
+      "Step 3 of attaching a file, after the bytes are PUT to upload_url. Checks the stored file's real type and size, then saves the attachment. If you've already read the file in chat, pass its full text as extracted_text (handwriting transcribed, nothing summarized). That's saved as-is, with no server-side cost. Otherwise the server extracts the text now (PDF text layer, DOCX, TXT/MD, or a Claude transcription for photos and scanned PDFs). If that fails, the upload still succeeds with extractStatus \"failed\" and an extractError; retry with vtx_attachment_extract. Confirming twice is harmless.",
     inputSchema: {
       type: "object",
       properties: {
@@ -339,6 +339,16 @@ export const TOOLS = [
           description: "Optional full text of the file (stored up to 50k characters).",
         },
       },
+      required: ["attachment_id"],
+    },
+  },
+  {
+    name: "vtx_attachment_extract",
+    description:
+      "Re-run server-side text extraction for an attachment, e.g. after extractStatus \"failed\". Returns the updated status and a text preview. Doesn't run on files whose text was provided at upload.",
+    inputSchema: {
+      type: "object",
+      properties: { attachment_id: { type: "string" } },
       required: ["attachment_id"],
     },
   },
@@ -379,7 +389,7 @@ export const TOOLS = [
 
 export const SERVER_INFO = {
   name: "vertex-mcp",
-  version: "1.5.0",
+  version: "1.6.0",
   protocolVersion: "2024-11-05",
 };
 
@@ -679,6 +689,7 @@ export const dispatchTool = async (
 
     case "vtx_attachment_request_upload":
     case "vtx_attachment_confirm":
+    case "vtx_attachment_extract":
     case "vtx_attachment_get":
     case "vtx_attachment_link":
     case "vtx_attachment_delete":
@@ -721,7 +732,11 @@ const attachmentTool = async (name: string, args: ToolArgs, userId: string): Pro
         });
       }
       case "vtx_attachment_confirm": {
-        const att = await confirmUpload(userId, attachmentId!, asString(args.extracted_text));
+        const att = await confirmAndExtract(userId, attachmentId!, asString(args.extracted_text));
+        return textContent({ attachment: summarize(att) });
+      }
+      case "vtx_attachment_extract": {
+        const att = await extractAttachment(userId, attachmentId!);
         return textContent({ attachment: summarize(att) });
       }
       case "vtx_attachment_get": {

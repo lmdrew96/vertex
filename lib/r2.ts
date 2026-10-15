@@ -82,3 +82,11 @@ export const deleteObject = async (key: string): Promise<void> => {
   const res = await client.fetch(objectUrl(base, key), { method: "DELETE" });
   if (!res.ok && res.status !== 404) throw new Error(`R2 DELETE failed (${res.status}) for ${key}`);
 };
+
+/** Download an object's bytes (for server-side text extraction). */
+export const getObjectBytes = async (key: string): Promise<Uint8Array> => {
+  const { client, base } = r2();
+  const res = await client.fetch(objectUrl(base, key), { method: "GET" });
+  if (!res.ok) throw new Error(`R2 GET failed (${res.status}) for ${key}`);
+  return new Uint8Array(await res.arrayBuffer());
+};

@@ -59,6 +59,7 @@ lib/
   auth.ts                   # PBKDF2 accounts, sessions, rate limits, token → graph resolution
   r2.ts                     # Presigned PUT/GET, HEAD, DELETE against the private R2 bucket
   attachments.ts            # Attachment upload flow, link/delete, listing
+  extract.ts                # Text extraction (unpdf, fflate DOCX, Claude transcription) + confirmAndExtract
   graph.ts                  # BFS traversal + Mermaid render + node-with-edges hydration
   *.test.ts                 # Unit tests
 ```
@@ -152,7 +153,15 @@ Files hang on one or more nodes and are never nodes themselves. Keys: `vertex:at
 The flow:
 1. `request_upload` validates the type (jpeg/png/webp/pdf/docx/txt/md; HEIC rejected) and size (≤10 MB) and checks the nodes exist. It returns a 15-minute presigned PUT with Content-Type signed in.
 2. The client PUTs the bytes.
-3. `confirm` HEAD-checks the real type and size (a mismatch is deleted) and writes the record. Passed `extracted_text` is saved as `"provided"`; otherwise the record stays `"pending"` until the extraction patch.
+3. `confirm` HEAD-checks the real type and size (a mismatch is deleted) and writes the record. Passed `extracted_text` is saved as `"provided"`. Otherwise `confirmAndExtract` (lib/extract.ts) extracts the text right away.
+
+Extraction:
+- TXT/MD are used as-is. DOCX is unzipped (`fflate`) and its XML stripped. PDFs use the text layer via `unpdf`.
+- Photos, and PDFs with no text layer, get one transcription call to `EXTRACTION_MODEL` (`claude-haiku-5-5`, the app's single model constant). Effort is low, and the prompt asks for an exact transcription plus one non-text line.
+- Stored text is capped at 50k characters.
+- A failure sets `"failed"` plus `extractError`; the upload is kept, and `vtx_attachment_extract` retries. Text Coru provided is never overwritten.
+
+**Bundle rule:** only the MCP route may import `lib/extract.ts`. `lib/nodes.ts` imports `lib/attachments.ts`, so if attachments imported extract, the PDF/AI libraries would land in the graph page's edge bundle (it hit 0.99 MB gzipped, at Vercel's 1 MB Hobby edge limit).
 
 Delete removes the R2 object first, then the record. Archiving a node leaves its files alone. Records never store or return a public URL; every read goes through a 1-hour presigned GET.
 
@@ -167,9 +176,10 @@ R2_ACCOUNT_ID=          # Cloudflare account ID
 R2_ACCESS_KEY_ID=       # R2 API token scoped to the `vertex` bucket (Object Read & Write)
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=vertex
+ANTHROPIC_API_KEY=      # photo/scan transcription only
 ```
 
-Without the R2 vars, the attachment tools return a clear "not set up" error and everything else keeps working.
+Without the R2 vars, the attachment tools return a clear "not set up" error and everything else keeps working. Without `ANTHROPIC_API_KEY`, photo and scan extraction fails with a clear `extractError`; text, DOCX, and text-layer PDFs still work.
 
 Set these in `.env.local` for local dev and in Vercel project settings for production.
 
