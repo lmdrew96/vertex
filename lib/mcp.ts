@@ -179,7 +179,7 @@ export const TOOLS = [
   {
     name: "vtx_edge_create",
     description:
-      "Connect two existing nodes with a directed, typed edge. Allowed pairs: member_of person → group; attended person → meeting; held_by meeting → group; about meeting → topic; involved_in person/group → topic; can_help_with person → topic; introduced person → person (A introduced Nae to B); connects_to any → any (say how in notes).",
+      "Connect two existing nodes with a directed, typed edge. Allowed pairs: member_of person → group; attended person → meeting; held_by meeting → group; about meeting → topic; involved_in person/group → topic; can_help_with person → topic; introduced person → person (A introduced Nae to B); connects_to any → any (say how in notes). An archived endpoint is reactivated; the response lists it under reactivated.",
     inputSchema: {
       type: "object",
       properties: {

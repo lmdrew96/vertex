@@ -6,7 +6,7 @@ import {
   edgeKey,
   orphansKey,
 } from "./keys";
-import { clearConnected, getNode, markConnected } from "./nodes";
+import { clearConnected, getNode, markConnected, reactivateNode } from "./nodes";
 import { EDGE_TYPES, type Edge, type EdgeCreateInput, type EdgeType, type NodeType } from "./types";
 
 // ── Pair rules ───────────────────────────────────────────────────────────────
@@ -50,7 +50,12 @@ export const validateEdgePair = (type: EdgeType, from: NodeType, to: NodeType): 
 export const createEdge = async (
   userId: string,
   input: EdgeCreateInput,
-): Promise<{ edge: Edge; fromNode: NonNullable<Awaited<ReturnType<typeof getNode>>>; toNode: NonNullable<Awaited<ReturnType<typeof getNode>>> }> => {
+): Promise<{
+  edge: Edge;
+  fromNode: NonNullable<Awaited<ReturnType<typeof getNode>>>;
+  toNode: NonNullable<Awaited<ReturnType<typeof getNode>>>;
+  reactivated: string[]; // archived endpoints this edge brought back
+}> => {
   if (input.from === input.to) {
     throw new Error("Cannot create an edge from a node to itself.");
   }
@@ -95,12 +100,17 @@ export const createEdge = async (
     markConnected(userId, input.to),
   ]);
 
+  // A new edge means the node matters again (e.g. an auto-archived hallway contact).
+  // Runs after markConnected so the two node writes don't race.
+  const reactivated = [fromNode, toNode].filter((n) => n.status === "archived").map((n) => n.id);
+  await Promise.all(reactivated.map((id) => reactivateNode(userId, id)));
+
   const [updatedFrom, updatedTo] = await Promise.all([
     getNode(userId, input.from),
     getNode(userId, input.to),
   ]);
 
-  return { edge, fromNode: updatedFrom!, toNode: updatedTo! };
+  return { edge, fromNode: updatedFrom!, toNode: updatedTo!, reactivated };
 };
 
 export const getEdge = async (

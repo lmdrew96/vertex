@@ -59,7 +59,7 @@ import {
   getEdgesTo,
   validateEdgePair,
 } from "./edges";
-import { createNode, getNode } from "./nodes";
+import { archiveNode, createNode, getNode } from "./nodes";
 import { adjFromKey, adjToKey, orphansKey } from "./keys";
 
 const USER = "user_test";
@@ -87,6 +87,26 @@ describe("createEdge", () => {
 
     expect(sets.get(adjFromKey(USER, a.id))?.has(edge.id)).toBe(true);
     expect(sets.get(adjToKey(USER, b.id))?.has(edge.id)).toBe(true);
+  });
+
+  it("reactivates an archived endpoint and reports it", async () => {
+    const a = await mkNode("Hallway Contact");
+    const b = await mkNode("Club");
+    await archiveNode(USER, a.id);
+
+    const { fromNode, toNode, reactivated } = await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
+
+    expect(reactivated).toEqual([a.id]);
+    expect(fromNode.status).toBe("active");
+    expect(fromNode.connectedAt).toBeTruthy();
+    expect(toNode.status).toBe("active");
+  });
+
+  it("reports nothing reactivated when both ends are active", async () => {
+    const a = await mkNode("Active A");
+    const b = await mkNode("Active B");
+    const { reactivated } = await createEdge(USER, { from: a.id, to: b.id, type: "connects_to" });
+    expect(reactivated).toEqual([]);
   });
 
   it("removes both nodes from orphans set", async () => {
