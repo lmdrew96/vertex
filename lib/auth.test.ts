@@ -101,8 +101,8 @@ describe("parseVertexToken", () => {
 });
 
 describe("resolveGraphId", () => {
-  it("lets a never-claimed token keep working as its own graph", async () => {
-    expect(await resolveGraphId(LEGACY)).toBe(LEGACY);
+  it("rejects a well-formed token no account has claimed", async () => {
+    expect(await resolveGraphId(LEGACY)).toBeNull();
   });
 
   it("rejects malformed tokens", async () => {

@@ -118,7 +118,7 @@ All keys are namespaced `vertex:{type}:{userId}:{id}`. `lib/keys.ts` is the sing
 The `[userId]` path segment is a **token**, not the graph namespace. Always run it through `resolveGraphId(token)` first (the MCP route, the graph page, and every server action do this):
 - An owned token (`vertex:tokenowner:{token}` → `{ email, graphId }`) resolves to the account's `graphId`.
 - A retired token (`vertex:tokenretired:{token}`, set on rotation) resolves to null, which is a 401.
-- A token no account has ever claimed resolves to itself, the same as before accounts existed.
+- A token no account has claimed resolves to null (401). Every graph needs an account (decided Oct 14, 2026; Nae's token is claimed and she's the only user).
 
 `graphId` is the account's first token and never changes, so graph keys never move. Signup can claim an existing token (the URL Claude is already connected to). Rotation mints a new token, retires the old one, and keeps `graphId`. Other keys: `vertex:account:{email}`, `vertex:session:{sid}` (HttpOnly cookie `vertex_session`, 30 days), `vertex:rl:*`. PBKDF2 uses 100k iterations, stored per record and within Workers' Web Crypto limit. No native crypto deps.
 

@@ -148,8 +148,8 @@ export const parseVertexToken = (raw: string): string | null => {
 // ── Token → graph resolution (MCP route, graph page, server actions) ─────────
 
 /**
- * The graph namespace a URL token may read and write, or null for a malformed or
- * retired token. Owned → that account's graphId. Never claimed → the token itself.
+ * The graph namespace a URL token may read and write, or null (→ 401). Owned → that
+ * account's graphId. Malformed, retired, or never claimed → null: every graph needs an account.
  */
 export const resolveGraphId = async (token: string): Promise<string | null> => {
   if (!BARE_TOKEN.test(token)) return null;
@@ -157,9 +157,8 @@ export const resolveGraphId = async (token: string): Promise<string | null> => {
     redis.get<TokenOwner>(tokenOwnerKey(token)),
     redis.get(retiredTokenKey(token)),
   ]);
-  if (owner) return owner.graphId;
-  if (retired) return null;
-  return token;
+  if (owner && !retired) return owner.graphId;
+  return null;
 };
 
 // ── Accounts ─────────────────────────────────────────────────────────────────

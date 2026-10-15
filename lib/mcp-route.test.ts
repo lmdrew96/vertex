@@ -54,6 +54,7 @@ vi.mock("./redis", () => ({ redis: fakeRedis }));
 
 import { POST } from "../app/[userId]/mcp/route";
 import { createAccount, rotateToken } from "./auth";
+import { createNode } from "./nodes";
 
 const LEGACY = "3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b";
 
@@ -87,14 +88,13 @@ const search = {
 };
 
 describe("MCP route auth", () => {
-  it("keeps an unclaimed connector URL working (tools/list POST)", async () => {
-    const res = await call(LEGACY, toolsList);
-    expect(res.status).toBe(200);
-    expect((await res.json()).result.tools.length).toBeGreaterThan(0);
+  it("401s a well-formed URL no account has claimed", async () => {
+    expect((await call(LEGACY, toolsList)).status).toBe(401);
+    expect((await call(LEGACY, createPerson)).status).toBe(401);
   });
 
-  it("keeps the same URL working after the account claims it, with the same data", async () => {
-    await call(LEGACY, createPerson);
+  it("serves a claimed URL with the graph that was already there", async () => {
+    await createNode(LEGACY, { type: "person", name: "Art Trembanis" });
     await createAccount("nae@example.com", "correct horse battery", LEGACY);
 
     const list = await call(LEGACY, toolsList);
@@ -104,7 +104,7 @@ describe("MCP route auth", () => {
   });
 
   it("401s the old URL after rotation and serves the same graph on the new one", async () => {
-    await call(LEGACY, createPerson);
+    await createNode(LEGACY, { type: "person", name: "Art Trembanis" });
     const account = await createAccount("nae@example.com", "correct horse battery", LEGACY);
     const next = await rotateToken(account);
 
