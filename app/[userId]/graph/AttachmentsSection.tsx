@@ -88,23 +88,25 @@ const STATUS: Record<ExtractStatus, { label: string; tone: "ok" | "neutral" | "e
 const badgeStyle = (tone: "ok" | "neutral" | "error") => ({
   fontFamily: "var(--font-mono)",
   fontSize: 10,
-  borderRadius: 9999,
+  letterSpacing: "0.5px",
+  textTransform: "uppercase" as const,
+  borderRadius: "var(--radius-btn)",
   padding: "2px 8px",
   whiteSpace: "nowrap" as const,
   ...(tone === "ok"
-    ? { background: "var(--color-mint)", color: "var(--color-on-light)" }
+    ? { background: "var(--sage-green)", color: "var(--indigo-void)" }
     : tone === "neutral"
-      ? { background: "var(--color-surface)", color: "var(--color-teal-deep)", border: "1px solid var(--color-lavender)" }
-      : { background: "transparent", color: "var(--color-danger)", border: "1px solid var(--color-danger)" }),
+      ? { background: "var(--inset)", color: "var(--muted-foreground)", border: "1px solid var(--hairline-strong)" }
+      : { background: "transparent", color: "var(--destructive-text)", border: "1px solid var(--destructive)" }),
 });
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const s = {
   drop: (active: boolean) => ({
-    border: `1.5px dashed ${active ? "var(--color-teal-deep)" : "var(--color-lavender)"}`,
-    background: active ? "var(--color-surface)" : "transparent",
-    borderRadius: 10,
+    border: `1.5px dashed ${active ? "var(--muted-foreground)" : "var(--hairline-strong)"}`,
+    background: active ? "var(--inset)" : "transparent",
+    borderRadius: "var(--radius)",
     padding: "12px 14px",
     display: "flex",
     alignItems: "center",
@@ -112,27 +114,15 @@ const s = {
     gap: 10,
     fontFamily: "var(--font-body)",
     fontSize: 12.5,
-    color: "var(--color-teal-deep)",
+    color: "var(--muted-foreground)",
     marginBottom: 10,
   }),
-  addBtn: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-teal-deep)",
-    color: "var(--color-white)",
-    border: "none",
-    borderRadius: 9999,
-    padding: "6px 14px",
-    fontSize: 12.5,
-    fontWeight: 500,
-    cursor: "pointer",
-    whiteSpace: "nowrap" as const,
-  },
   item: {
-    border: "1px solid var(--color-lavender)",
-    borderRadius: 10,
+    border: "1px solid var(--hairline)",
+    borderRadius: "var(--radius-btn)",
     padding: 8,
     marginBottom: 8,
-    background: "var(--color-white)",
+    background: "var(--card)",
   },
   row: { display: "flex", gap: 10, alignItems: "center" },
   thumbBtn: {
@@ -140,8 +130,8 @@ const s = {
     height: 52,
     flexShrink: 0,
     borderRadius: 8,
-    border: "1px solid var(--color-lavender)",
-    background: "var(--color-surface)",
+    border: "1px solid var(--hairline)",
+    background: "var(--inset)",
     padding: 0,
     overflow: "hidden",
     cursor: "pointer",
@@ -151,14 +141,14 @@ const s = {
     fontFamily: "var(--font-mono)",
     fontSize: 11,
     fontWeight: 600,
-    color: "var(--color-teal-deep)",
+    color: "var(--muted-foreground)",
   },
   meta: { flex: 1, minWidth: 0 },
   filename: {
     fontFamily: "var(--font-body)",
     fontSize: 13,
     fontWeight: 500,
-    color: "var(--color-ink)",
+    color: "var(--foreground)",
     background: "none",
     border: "none",
     padding: 0,
@@ -170,7 +160,7 @@ const s = {
     display: "block",
     maxWidth: "100%",
   },
-  caption: { fontFamily: "var(--font-body)", fontSize: 12, color: "var(--color-teal-deep)", opacity: 0.8 },
+  caption: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--muted-foreground)" },
   smallRow: { display: "flex", gap: 8, alignItems: "center", marginTop: 4 },
   textToggle: {
     fontFamily: "var(--font-body)",
@@ -178,31 +168,21 @@ const s = {
     background: "none",
     border: "none",
     padding: 0,
-    color: "var(--color-teal-deep)",
+    color: "var(--muted-foreground)",
     textDecoration: "underline",
     cursor: "pointer",
   },
-  deleteBtn: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11.5,
-    background: "none",
-    border: "none",
-    padding: 0,
-    marginLeft: "auto",
-    color: "var(--color-danger)",
-    cursor: "pointer",
-  },
-  confirmText: { fontFamily: "var(--font-body)", fontSize: 11.5, color: "var(--color-danger)", marginLeft: "auto" },
+  deleteBtn: { fontSize: 12, marginLeft: "auto", cursor: "pointer" },
+  confirmText: { fontFamily: "var(--font-body)", fontSize: 11.5, color: "var(--destructive-text)", marginLeft: "auto" },
   textBox: {
     marginTop: 8,
     padding: "10px 12px",
-    background: "var(--color-surface)",
-    borderRadius: 8,
+    background: "var(--inset)",
+    borderRadius: "var(--radius-btn)",
     maxHeight: 260,
     overflowY: "auto" as const,
   },
-  note: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-teal-deep)", opacity: 0.75, margin: "0 0 8px" },
-  error: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-danger)", margin: "0 0 8px" },
+  note: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--muted-foreground)", margin: "0 0 8px" },
 };
 
 // ── Viewer modal ─────────────────────────────────────────────────────────────
@@ -211,7 +191,7 @@ const v = {
   backdrop: {
     position: "fixed" as const,
     inset: 0,
-    background: "rgba(30, 24, 48, 0.65)",
+    background: "rgba(20, 15, 34, 0.7)",
     zIndex: 100,
     display: "flex",
     alignItems: "center",
@@ -219,22 +199,22 @@ const v = {
     padding: 16,
   },
   dialog: (mobile: boolean) => ({
-    background: "var(--color-white)",
-    borderRadius: mobile ? 0 : 16,
+    background: "var(--card)",
+    borderRadius: mobile ? 0 : "var(--radius)",
+    border: mobile ? "none" : "1.5px solid var(--border)",
     width: mobile ? "100vw" : "min(960px, 100%)",
     height: mobile ? "100dvh" : "min(88vh, 900px)",
     margin: mobile ? -16 : 0,
     display: "flex",
     flexDirection: "column" as const,
     overflow: "hidden",
-    boxShadow: "0 12px 40px rgba(0,0,0,0.3)",
   }),
   header: {
     display: "flex",
     alignItems: "center",
     gap: 12,
     padding: "12px 16px",
-    borderBottom: "1.5px solid var(--color-lavender)",
+    borderBottom: "1.5px solid var(--hairline-strong)",
   },
   title: {
     flex: 1,
@@ -242,26 +222,26 @@ const v = {
     fontFamily: "var(--font-body)",
     fontWeight: 600,
     fontSize: 14,
-    color: "var(--color-ink)",
+    color: "var(--foreground)",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
     margin: 0,
   },
-  link: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-teal-deep)" },
+  link: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--muted-foreground)" },
   close: {
     background: "none",
     border: "none",
     fontSize: 18,
-    color: "var(--color-teal-deep)",
+    color: "var(--muted-foreground)",
     cursor: "pointer",
     lineHeight: 1,
     padding: 4,
   },
-  body: { flex: 1, minHeight: 0, overflow: "auto", background: "var(--color-surface)" },
+  body: { flex: 1, minHeight: 0, overflow: "auto", background: "var(--inset)" },
   img: { display: "block", maxWidth: "100%", maxHeight: "100%", margin: "0 auto", objectFit: "contain" as const },
-  frame: { width: "100%", height: "100%", border: "none", display: "block", background: "var(--color-white)" },
-  text: { padding: "18px 22px", background: "var(--color-white)", minHeight: "100%" },
+  frame: { width: "100%", height: "100%", border: "none", display: "block", background: "var(--card)" },
+  text: { padding: "18px 22px", background: "var(--card)", minHeight: "100%" },
 };
 
 function AttachmentViewer({
@@ -426,7 +406,7 @@ export function AttachmentsSection({
         }}
       >
         <span>{busy || (mobile ? "Photos, PDFs, docs, notes" : "Drop files here: photos, PDFs, docs, notes")}</span>
-        <button type="button" style={s.addBtn} onClick={() => inputRef.current?.click()} disabled={Boolean(busy)}>
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => inputRef.current?.click()} disabled={Boolean(busy)}>
           Add file
         </button>
         <input
@@ -443,7 +423,7 @@ export function AttachmentsSection({
       </div>
 
       {loadError && <p style={s.note}>{loadError}</p>}
-      {error && <p style={s.error}>{error}</p>}
+      {error && <p className="error-text" style={{ marginBottom: 8 }}>{error}</p>}
       {attachments.length === 0 && !loadError && <p style={s.note}>No files yet.</p>}
 
       {attachments.map((att) => {
@@ -488,7 +468,7 @@ export function AttachmentsSection({
                   ) : confirmingDelete === att.id ? (
                     <span style={s.confirmText}>
                       {att.nodeIds.length > 1 ? `Delete from all ${att.nodeIds.length} nodes? ` : "Delete for good? "}
-                      <button type="button" style={{ ...s.textToggle, color: "var(--color-danger)" }} onClick={() => void remove(att)}>
+                      <button type="button" style={{ ...s.textToggle, color: "var(--destructive-text)" }} onClick={() => void remove(att)}>
                         Yes
                       </button>{" "}
                       <button type="button" style={s.textToggle} onClick={() => setConfirmingDelete(null)}>
@@ -498,6 +478,7 @@ export function AttachmentsSection({
                   ) : (
                     <button
                       type="button"
+                      className="btn-quiet"
                       style={s.deleteBtn}
                       onClick={() => setConfirmingDelete(att.id)}
                       aria-label={`Delete ${att.filename}`}

@@ -5,59 +5,9 @@ import type { PublicAccount } from "@/lib/auth";
 
 const s = {
   wrap: { display: "flex", flexDirection: "column" as const, gap: 12 },
-  tabs: { display: "flex", gap: 6 },
-  tab: (on: boolean) => ({
-    flex: 1,
-    fontFamily: "var(--font-body)",
-    background: on ? "var(--color-teal-deep)" : "transparent",
-    border: `1.5px solid ${on ? "var(--color-teal-deep)" : "var(--color-lavender)"}`,
-    borderRadius: 9999,
-    color: on ? "var(--color-white)" : "var(--color-ink)",
-    fontSize: 13.5,
-    fontWeight: 600,
-    padding: "9px 12px",
-    cursor: "pointer",
-  }),
-  input: (mono = false) => ({
-    fontFamily: mono ? "var(--font-mono)" : "var(--font-body)",
-    background: "var(--color-surface)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 8,
-    color: "var(--color-ink)",
-    fontSize: 14,
-    padding: "10px 12px",
-    outline: "none",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  }),
-  label: {
-    fontFamily: "var(--font-body)",
-    fontSize: 12.5,
-    color: "var(--color-teal-deep)",
-    margin: "4px 0 -4px",
-  },
-  submit: (busy: boolean) => ({
-    fontFamily: "var(--font-body)",
-    background: "var(--color-gold)",
-    opacity: busy ? 0.6 : 1,
-    color: "var(--color-on-light)",
-    border: "none",
-    borderRadius: 9999,
-    padding: "12px 20px",
-    fontWeight: 600,
-    fontSize: 15,
-    cursor: busy ? "default" : "pointer",
-    width: "100%",
-  }),
-  error: { fontFamily: "var(--font-body)", color: "var(--color-danger)", fontSize: 13, margin: 0 },
-  hint: {
-    fontFamily: "var(--font-body)",
-    color: "var(--color-teal-deep)",
-    opacity: 0.7,
-    fontSize: 12.5,
-    lineHeight: 1.55,
-    margin: 0,
-  },
+  tabs: { display: "flex", gap: 8 },
+  label: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted-foreground)", margin: "4px 0 -4px" },
+  hint: { fontFamily: "var(--font-body)", color: "var(--muted-foreground)", fontSize: 13, lineHeight: 1.55, margin: 0 },
 };
 
 type Mode = "signup" | "login";
@@ -114,10 +64,22 @@ export const AuthPanel = ({
   return (
     <div style={s.wrap}>
       <div style={s.tabs}>
-        <button type="button" onClick={() => switchMode("signup")} style={s.tab(mode === "signup")}>
+        <button
+          type="button"
+          onClick={() => switchMode("signup")}
+          className="chip"
+          style={{ flex: 1, justifyContent: "center", padding: "8px 10px" }}
+          aria-pressed={mode === "signup"}
+        >
           Create account
         </button>
-        <button type="button" onClick={() => switchMode("login")} style={s.tab(mode === "login")}>
+        <button
+          type="button"
+          onClick={() => switchMode("login")}
+          className="chip"
+          style={{ flex: 1, justifyContent: "center", padding: "8px 10px" }}
+          aria-pressed={mode === "login"}
+        >
           Sign in
         </button>
       </div>
@@ -129,7 +91,7 @@ export const AuthPanel = ({
         onKeyDown={(e) => e.key === "Enter" && submit()}
         placeholder="you@example.com"
         autoComplete="email"
-        style={s.input()}
+        className="input"
         aria-label="Email"
       />
       <input
@@ -139,7 +101,7 @@ export const AuthPanel = ({
         onKeyDown={(e) => e.key === "Enter" && submit()}
         placeholder={mode === "signup" ? "Password (10+ characters)" : "Password"}
         autoComplete={mode === "signup" ? "new-password" : "current-password"}
-        style={s.input()}
+        className="input"
         aria-label="Password"
       />
 
@@ -151,15 +113,16 @@ export const AuthPanel = ({
             onChange={(e) => setClaim(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
             placeholder="https://vertex.adhdesigns.dev/…/mcp or the token"
-            style={s.input(true)}
+            className="input"
+            style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
             aria-label="Existing Vertex URL or token"
           />
         </>
       )}
 
-      {error && <p style={s.error}>{error}</p>}
+      {error && <p className="error-text">{error}</p>}
 
-      <button type="button" onClick={submit} disabled={busy} style={s.submit(busy)}>
+      <button type="button" onClick={submit} disabled={busy} className="btn btn-primary" style={{ width: "100%" }}>
         {busy ? "Working…" : mode === "signup" ? "Create account" : "Sign in"}
       </button>
 

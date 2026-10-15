@@ -15,7 +15,6 @@ const s = {
     display: "flex",
     flexDirection: mobile ? ("column" as const) : ("row" as const),
     minHeight: "100vh",
-    background: "var(--color-surface)",
     position: "relative" as const,
   }),
   main: {

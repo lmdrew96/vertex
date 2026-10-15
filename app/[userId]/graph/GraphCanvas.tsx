@@ -25,15 +25,15 @@ const EDGE_TYPE_STYLE: Record<
   DisplayEdgeType,
   { stroke: string; strokeWidth: number; dashed?: boolean; arrow?: boolean }
 > = {
-  member_of: { stroke: "var(--color-teal-deep)", strokeWidth: 2, arrow: true },
-  attended: { stroke: "var(--color-mint)", strokeWidth: 1.5 },
-  held_by: { stroke: "var(--color-teal-deep)", strokeWidth: 1.5, dashed: true },
-  about: { stroke: "var(--color-purple)", strokeWidth: 1.5, dashed: true },
-  involved_in: { stroke: "var(--color-purple)", strokeWidth: 2 },
-  can_help_with: { stroke: "var(--color-gold)", strokeWidth: 2.5, arrow: true },
-  introduced: { stroke: "var(--color-gold)", strokeWidth: 2, dashed: true, arrow: true },
-  connects_to: { stroke: "var(--color-lavender)", strokeWidth: 1.5 },
-  via_meeting: { stroke: "var(--color-mint)", strokeWidth: 2 },
+  member_of: { stroke: "var(--edge-main)", strokeWidth: 2, arrow: true },
+  attended: { stroke: "var(--edge-main)", strokeWidth: 1.5 },
+  held_by: { stroke: "var(--edge-main)", strokeWidth: 1.5, dashed: true },
+  about: { stroke: "var(--edge-accent)", strokeWidth: 1.5, dashed: true },
+  involved_in: { stroke: "var(--edge-accent)", strokeWidth: 2 },
+  can_help_with: { stroke: "var(--edge-strong)", strokeWidth: 2.5, arrow: true },
+  introduced: { stroke: "var(--edge-strong)", strokeWidth: 2, dashed: true, arrow: true },
+  connects_to: { stroke: "var(--hairline-strong)", strokeWidth: 1.5 },
+  via_meeting: { stroke: "var(--edge-main)", strokeWidth: 2 },
 };
 
 // The people → meetings → groups/topics flow. Everything else skips a column and draws lighter.
@@ -182,11 +182,13 @@ function layout(subgraph: Subgraph, graph: DisplayGraph): RFNode[] {
       style: {
         background: NODE_TYPE_COLOR[node.type],
         color: NODE_TYPE_TEXT[node.type],
-        border: node.id === subgraph.root.id ? "3px solid var(--color-ink)" : "none",
-        borderRadius: 10,
+        border: node.id === subgraph.root.id ? "3px solid var(--indigo-void)" : "none",
+        // The node you're exploring gets the hard Magenta shadow.
+        boxShadow: node.id === subgraph.root.id ? "var(--shadow-hard)" : "none",
+        borderRadius: "var(--radius-btn)",
         fontFamily: "var(--font-body)",
         fontSize: small ? 11 : 12,
-        fontWeight: 500,
+        fontWeight: 700,
         whiteSpace: "pre-line",
         textAlign: "center",
         padding: small ? 6 : 8,
@@ -269,20 +271,8 @@ const s = {
     justifyContent: "center",
     height: "100%",
     fontFamily: "var(--font-body)",
-    color: "var(--color-teal-deep)",
-    opacity: 0.6,
+    color: "var(--muted-foreground)",
     fontSize: 14,
-  },
-  firstMeetingBtn: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-gold)",
-    color: "var(--color-on-light)",
-    border: "none",
-    borderRadius: 9999,
-    padding: "11px 22px",
-    fontWeight: 600,
-    fontSize: 14,
-    cursor: "pointer",
   },
   toolbar: {
     position: "absolute" as const,
@@ -291,91 +281,42 @@ const s = {
     zIndex: 5,
     display: "flex",
     alignItems: "center",
-    gap: 8,
-    background: "var(--color-white)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 9999,
-    padding: "6px 12px",
+    gap: 6,
+    border: "1.5px solid var(--hairline)",
+    borderRadius: "var(--radius-btn)",
+    padding: "6px 10px",
   },
-  toolbarLabel: {
-    fontFamily: "var(--font-body)",
-    fontSize: 12,
-    color: "var(--color-teal-deep)",
-  },
-  depthBtn: (active: boolean) => ({
-    fontFamily: "var(--font-mono)",
-    fontSize: 12,
-    width: 24,
-    height: 24,
-    borderRadius: "50%",
-    border: `1.5px solid ${active ? "var(--color-teal-deep)" : "var(--color-lavender)"}`,
-    background: active ? "var(--color-teal-deep)" : "transparent",
-    color: active ? "var(--color-white)" : "var(--color-ink)",
-    cursor: "pointer",
-  }),
+  depthBtn: { width: 28, height: 26, justifyContent: "center", padding: 0 },
+  // Solid card + border, no soft shadow.
   popover: {
     position: "fixed" as const,
     zIndex: 20,
-    maxWidth: 260,
-    background: "var(--color-ink)",
-    color: "var(--color-white)",
-    borderRadius: 10,
-    padding: "10px 14px",
-    fontFamily: "var(--font-body)",
-    fontSize: 12,
-    lineHeight: 1.5,
-    boxShadow: "0px 4px 12px rgba(0,0,0,0.25)",
-  },
-  popoverType: {
-    fontFamily: "var(--font-mono)",
-    fontSize: 10,
-    color: "var(--color-lavender)",
-    marginBottom: 4,
-    textTransform: "uppercase" as const,
-  },
-  popoverActions: { display: "flex", gap: 6, marginTop: 8 },
-  popoverBtn: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11.5,
-    background: "transparent",
-    color: "var(--color-white)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 9999,
-    padding: "3px 10px",
-    cursor: "pointer",
-  },
-  mobileList: {
-    padding: 16,
-    overflowY: "auto" as const,
-  },
-  mobileRow: {
-    padding: "10px 14px",
-    borderRadius: 10,
-    background: "var(--color-white)",
-    border: "1.5px solid var(--color-lavender)",
-    marginBottom: 8,
+    maxWidth: 280,
+    border: "1.5px solid var(--border)",
+    borderRadius: "var(--radius)",
+    padding: "12px 14px",
     fontFamily: "var(--font-body)",
     fontSize: 13,
+    lineHeight: 1.5,
   },
-  toggleBtn: (active: boolean) => ({
+  popoverActions: { display: "flex", gap: 6, marginTop: 10 },
+  mobileList: { padding: 16, overflowY: "auto" as const },
+  mobileRow: {
+    padding: "10px 14px",
+    borderRadius: "var(--radius-btn)",
+    marginBottom: 8,
     fontFamily: "var(--font-body)",
-    fontSize: 12,
-    borderRadius: 9999,
-    padding: "3px 10px",
-    border: `1.5px solid ${active ? "var(--color-teal-deep)" : "var(--color-lavender)"}`,
-    background: active ? "var(--color-teal-deep)" : "transparent",
-    color: active ? "var(--color-white)" : "var(--color-ink)",
+    fontSize: 13.5,
     cursor: "pointer",
-  }),
-  divider: { width: 1, height: 18, background: "var(--color-lavender)" },
+  },
+  divider: { width: 1, height: 18, background: "var(--hairline-strong)" },
   legend: {
     position: "absolute" as const,
     top: 12,
     right: 12,
     zIndex: 5,
-    background: "var(--color-white)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 10,
+    border: "1.5px solid var(--hairline)",
+    borderRadius: "var(--radius-btn)",
     padding: "8px 12px",
     display: "grid",
     gridTemplateColumns: "auto auto",
@@ -384,15 +325,10 @@ const s = {
     alignItems: "center",
     fontFamily: "var(--font-mono)",
     fontSize: 10,
-    color: "var(--color-ink)",
-  },
-  columnTitle: {
-    fontFamily: "var(--font-mono)",
-    fontSize: 11,
+    letterSpacing: "0.4px",
     textTransform: "uppercase" as const,
-    color: "var(--color-teal-deep)",
-    margin: "14px 0 6px",
   },
+  columnTitle: { margin: "14px 0 6px" },
 };
 
 type GraphCanvasProps = {
@@ -497,11 +433,11 @@ export function GraphCanvas({
     return (
       <div style={s.container}>
         {graphIsEmpty ? (
-          <div style={{ ...s.empty, flexDirection: "column", gap: 14, opacity: 1, padding: 24, textAlign: "center" }}>
-            <p style={{ margin: 0, maxWidth: 360, opacity: 0.8 }}>
+          <div style={{ ...s.empty, flexDirection: "column", gap: 14, padding: 24, textAlign: "center" }}>
+            <p style={{ margin: 0, maxWidth: 360 }}>
               Your network starts with a meeting: who was there, which group, what came up.
             </p>
-            <button type="button" style={s.firstMeetingBtn} onClick={onLogFirstMeeting}>
+            <button type="button" className="btn btn-primary" onClick={onLogFirstMeeting}>
               Log your first meeting
             </button>
           </div>
@@ -513,17 +449,17 @@ export function GraphCanvas({
   }
 
   const toolbar = (
-    <div style={s.toolbar}>
-      <span style={s.toolbarLabel}>Depth</span>
+    <div className="panel" style={s.toolbar}>
+      <span className="meta">Depth</span>
       {[1, 2, 3, 4].map((d) => (
-        <button key={d} style={s.depthBtn(d === depth)} onClick={() => setDepth(d)}>
+        <button key={d} className="chip" style={s.depthBtn} aria-pressed={d === depth} onClick={() => setDepth(d)}>
           {d}
         </button>
       ))}
       <span style={s.divider} />
       <button
         type="button"
-        style={s.toggleBtn(hideMeetings)}
+        className="chip"
         onClick={() => setHideMeetings((x) => !x)}
         aria-pressed={hideMeetings}
         title={
@@ -553,10 +489,11 @@ export function GraphCanvas({
         {columns.map((nodes, c) =>
           nodes.length === 0 ? null : (
             <div key={c}>
-              <p style={s.columnTitle}>{COLUMN_TITLES[c]}</p>
+              <p className="label" style={s.columnTitle}>{COLUMN_TITLES[c]}</p>
               {nodes.map((node) => (
                 <div
                   key={node.id}
+                  className="card-solid"
                   style={{
                     ...s.mobileRow,
                     borderLeft: `6px solid ${NODE_TYPE_COLOR[node.type]}`,
@@ -578,7 +515,7 @@ export function GraphCanvas({
     <div style={s.container}>
       {toolbar}
       {legendTypes.length > 0 && (
-        <div style={s.legend} aria-label="Edge legend">
+        <div className="panel" style={s.legend} aria-label="Edge legend">
           {legendTypes.map((t) => (
             <span key={t} style={{ display: "contents" }}>
               <LegendSwatch type={t} />
@@ -614,20 +551,20 @@ export function GraphCanvas({
         <Controls />
       </ReactFlow>
       {popover && (
-        <div style={{ ...s.popover, left: popover.x + 12, top: popover.y + 12 }}>
-          <p style={s.popoverType}>{popover.edge.type}</p>
+        <div className="panel" style={{ ...s.popover, left: popover.x + 12, top: popover.y + 12 }}>
+          <p className="meta" style={{ margin: "0 0 4px" }}>{popover.edge.type.replace(/_/g, " ")}</p>
           {popover.edge.evidence && <p style={{ margin: "0 0 4px 0" }}>{popover.edge.evidence}</p>}
-          {popover.edge.notes && <p style={{ margin: 0, opacity: 0.8 }}>{popover.edge.notes}</p>}
+          {popover.edge.notes && <p style={{ margin: 0, color: "var(--muted-foreground)" }}>{popover.edge.notes}</p>}
           <div style={s.popoverActions}>
-            <button type="button" style={s.popoverBtn} onClick={() => void changeEdge(popover.edge, "archive")}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => void changeEdge(popover.edge, "archive")}>
               Archive
             </button>
-            <button type="button" style={s.popoverBtn} onClick={() => void changeEdge(popover.edge, "delete")}>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => void changeEdge(popover.edge, "delete")}>
               Delete
             </button>
           </div>
           {popoverError && (
-            <p role="alert" style={{ margin: "6px 0 0", color: "var(--color-danger)" }}>
+            <p role="alert" className="error-text" style={{ marginTop: 8 }}>
               {popoverError}
             </p>
           )}

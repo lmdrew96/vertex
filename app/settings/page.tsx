@@ -63,7 +63,7 @@ export default function SettingsPage() {
 
   return (
     <main style={s.page}>
-      <div style={s.card}>
+      <div className="card" style={s.card}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <h1 style={s.h1}>Settings</h1>
           {account && <AppNav token={token} current="settings" />}
@@ -71,14 +71,14 @@ export default function SettingsPage() {
 
         {!account ? (
           error ? (
-            <p style={s.errorText}>{error}</p>
+            <p className="error-text">{error}</p>
           ) : (
             <p style={s.divider}>Loading…</p>
           )
         ) : (
           <>
             {rotated && (
-              <div style={{ ...s.tipBox, borderColor: "var(--color-gold)" }}>
+              <div style={{ ...s.tipBox, borderColor: "var(--caution-amber)" }}>
                 <strong>New URL below — update your Claude connector.</strong> The old URL stopped
                 working. In Claude, open <span style={s.tipKey}>Settings → Connectors → Vertex</span>{" "}
                 and replace the URL with this one.
@@ -86,11 +86,11 @@ export default function SettingsPage() {
             )}
 
             <div style={s.urlBox}>
-              <p style={s.urlLabel}>Your MCP URL</p>
+              <p className="label" style={s.urlLabel}>Your MCP URL</p>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <code style={s.code}>{mcpUrl}</code>
-                <button onClick={copy} style={s.copyBtn}>
-                  {copied ? "Copied ✓" : "Copy"}
+                <button onClick={copy} className="btn btn-outline btn-sm">
+                  {copied ? "Copied" : "Copy"}
                 </button>
               </div>
             </div>
@@ -105,26 +105,26 @@ export default function SettingsPage() {
               <div style={s.tipBox}>
                 Rotating gives you a new URL and turns off the current one. Every Claude connected
                 to Vertex will need the new URL.{" "}
-                <span style={{ display: "inline-flex", gap: 8, marginTop: 8 }}>
-                  <button onClick={rotate} style={s.copyBtn}>
+                <span style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button onClick={rotate} className="btn btn-primary btn-sm">
                     Rotate now
                   </button>
-                  <button onClick={() => setConfirmRotate(false)} style={s.switchBtn}>
+                  <button onClick={() => setConfirmRotate(false)} className="btn btn-outline btn-sm">
                     Cancel
                   </button>
                 </span>
               </div>
             ) : (
-              <button onClick={() => setConfirmRotate(true)} style={s.switchBtn}>
+              <button onClick={() => setConfirmRotate(true)} className="btn btn-outline btn-sm" style={{ alignSelf: "flex-start" }}>
                 Rotate my URL
               </button>
             )}
 
-            {error && <p style={s.errorText}>{error}</p>}
+            {error && <p className="error-text">{error}</p>}
 
             <p style={s.divider}>
               Signed in as {account.email} ·{" "}
-              <button onClick={signOut} style={{ ...s.switchBtn, opacity: 1 }}>
+              <button onClick={signOut} className="btn-quiet" style={{ fontSize: 13, cursor: "pointer" }}>
                 Sign out
               </button>
             </p>

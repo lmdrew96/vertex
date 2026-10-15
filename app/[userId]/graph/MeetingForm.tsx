@@ -14,72 +14,37 @@ const todayLocal = (): string => {
 
 const s = {
   form: { padding: "0 18px 18px", display: "flex", flexDirection: "column" as const, gap: 10, maxWidth: 520 },
-  input: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-surface)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 8,
-    color: "var(--color-ink)",
-    fontSize: 14,
-    padding: "9px 11px",
-    outline: "none",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  },
-  label: { fontFamily: "var(--font-body)", fontSize: 12, color: "var(--color-teal-deep)", margin: "2px 0 -4px" },
+  label: { margin: "4px 0 -4px" },
   row: { display: "flex", gap: 10, flexWrap: "wrap" as const },
   chips: { display: "flex", flexWrap: "wrap" as const, gap: 6 },
+  // Square name tag; the left bar carries the node type color.
   chip: (color: string) => ({
     fontFamily: "var(--font-body)",
-    fontSize: 12.5,
+    fontSize: 13,
     display: "inline-flex",
     alignItems: "center",
-    gap: 6,
-    padding: "4px 6px 4px 10px",
-    borderRadius: 9999,
-    border: `1.5px solid ${color}`,
-    background: "var(--color-white)",
+    gap: 4,
+    padding: "3px 4px 3px 9px",
+    background: "var(--inset)",
+    borderLeft: `4px solid ${color}`,
   }),
   chipX: {
     background: "none",
     border: "none",
     cursor: "pointer",
-    color: "var(--color-teal-deep)",
+    color: "var(--foreground)",
     fontSize: 13,
     lineHeight: 1,
-    padding: "0 4px",
+    padding: "2px 5px",
   },
-  submit: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-gold)",
-    color: "var(--color-on-light)",
-    border: "none",
-    borderRadius: 9999,
-    padding: "10px 20px",
-    fontWeight: 600,
-    fontSize: 14,
-    cursor: "pointer",
-    alignSelf: "flex-start" as const,
-  },
-  error: { fontFamily: "var(--font-body)", color: "var(--color-danger)", fontSize: 12.5, margin: 0 },
   choiceBox: {
-    border: "1.5px solid var(--color-gold)",
-    borderRadius: 10,
-    padding: "10px 12px",
-    background: "var(--color-white)",
+    border: "1.5px solid var(--caution-amber)",
+    borderRadius: "var(--radius)",
+    padding: "12px 14px",
+    background: "var(--inset)",
     fontFamily: "var(--font-body)",
-    fontSize: 13,
+    fontSize: 13.5,
   },
-  choiceBtn: (picked: boolean) => ({
-    fontFamily: "var(--font-body)",
-    fontSize: 12.5,
-    padding: "5px 11px",
-    borderRadius: 9999,
-    border: `1.5px solid ${picked ? "var(--color-teal-deep)" : "var(--color-lavender)"}`,
-    background: picked ? "var(--color-teal-deep)" : "var(--color-white)",
-    color: picked ? "var(--color-white)" : "var(--color-ink)",
-    cursor: "pointer",
-  }),
 };
 
 /** Type a name, press Enter (or comma) to add it. Suggestions come from existing nodes. */
@@ -129,7 +94,7 @@ function ChipInput({
         ))}
       </datalist>
       <input
-        style={s.input}
+        className="input"
         list={id}
         value={draft}
         placeholder={placeholder}
@@ -238,28 +203,30 @@ export function MeetingForm({
     <div style={s.form}>
       <div style={s.chips} role="group" aria-label="Meeting or event">
         {(["meeting", "event"] as const).map((k) => (
-          <button key={k} type="button" style={s.choiceBtn(kind === k)} aria-pressed={kind === k} onClick={() => setKind(k)}>
+          <button key={k} type="button" className="chip" aria-pressed={kind === k} onClick={() => setKind(k)}>
             {k === "meeting" ? "Meeting" : "Event (luncheon, talk…)"}
           </button>
         ))}
       </div>
       <div style={s.row}>
         <input
-          style={{ ...s.input, flex: "0 0 170px" }}
+          className="input"
+          style={{ flex: "0 0 170px" }}
           type="date"
           aria-label={kind === "event" ? "Event date" : "Meeting date"}
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
         <input
-          style={{ ...s.input, flex: 1, minWidth: 180 }}
+          className="input"
+          style={{ flex: 1, minWidth: 180 }}
           placeholder="Name (optional, defaults to date · group)"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
 
-      <p style={s.label}>Who was there (besides you)</p>
+      <p className="label" style={s.label}>Who was there (besides you)</p>
       <ChipInput
         id="meeting-attendees"
         values={attendees}
@@ -269,21 +236,21 @@ export function MeetingForm({
         placeholder="Type a name, press Enter"
       />
 
-      <p style={s.label}>Group (optional)</p>
+      <p className="label" style={s.label}>Group (optional)</p>
       <datalist id="meeting-groups">
         {namesOf("group").map((n) => (
           <option key={n} value={n} />
         ))}
       </datalist>
       <input
-        style={s.input}
+        className="input"
         list="meeting-groups"
         placeholder="e.g. PSAC"
         value={group}
         onChange={(e) => setGroup(e.target.value)}
       />
 
-      <p style={s.label}>Topics (optional)</p>
+      <p className="label" style={s.label}>Topics (optional)</p>
       <ChipInput
         id="meeting-topics"
         values={topics}
@@ -293,9 +260,10 @@ export function MeetingForm({
         placeholder="Type a topic, press Enter"
       />
 
-      <p style={s.label}>Notes (markdown)</p>
+      <p className="label" style={s.label}>Notes (markdown)</p>
       <textarea
-        style={{ ...s.input, minHeight: 90, resize: "vertical" }}
+        className="input"
+        style={{ minHeight: 90, resize: "vertical" }}
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="What came up, decisions, next steps…"
@@ -317,7 +285,9 @@ export function MeetingForm({
                     <button
                       key={cand.id}
                       type="button"
-                      style={s.choiceBtn(picked === cand.id)}
+                      className="chip"
+                      style={{ textTransform: "none" }}
+                      aria-pressed={picked === cand.id}
                       onClick={() => answer(c, cand.id)}
                     >
                       {cand.name}
@@ -325,7 +295,13 @@ export function MeetingForm({
                       {cand.status === "archived" ? " (archived)" : ""}
                     </button>
                   ))}
-                  <button type="button" style={s.choiceBtn(picked === "new")} onClick={() => answer(c, "new")}>
+                  <button
+                    type="button"
+                    className="chip"
+                    style={{ textTransform: "none" }}
+                    aria-pressed={picked === "new"}
+                    onClick={() => answer(c, "new")}
+                  >
                     New {c.field === "attendees" ? "person" : c.field === "group" ? "group" : "topic"}: {c.input}
                   </button>
                 </div>
@@ -335,8 +311,8 @@ export function MeetingForm({
         </div>
       )}
 
-      {error && <p style={s.error}>{error}</p>}
-      <button type="button" style={s.submit} onClick={() => void submit()} disabled={busy}>
+      {error && <p className="error-text">{error}</p>}
+      <button type="button" className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={() => void submit()} disabled={busy}>
         {busy ? "Logging…" : kind === "event" ? "Log event" : "Log meeting"}
       </button>
     </div>

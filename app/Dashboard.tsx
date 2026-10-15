@@ -11,122 +11,53 @@ import { AppNav } from "./AppNav";
 const SEARCH_LIMIT = 8;
 
 const s = {
-  page: {
-    minHeight: "100vh",
-    background: "var(--color-surface)",
-    padding: "20px 24px 32px",
-    boxSizing: "border-box" as const,
-  },
+  page: { minHeight: "100vh", padding: "20px 16px 32px" },
   header: {
     maxWidth: 1080,
-    margin: "0 auto 20px",
+    margin: "0 auto 24px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
     flexWrap: "wrap" as const,
   },
-  h1: { fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600, color: "var(--color-ink)", margin: 0 },
+  h1: { fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, margin: 0 },
   // Two columns on desktop; auto-fit stacks them on narrow screens.
   grid: {
     maxWidth: 1080,
     margin: "0 auto",
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))",
-    gap: 20,
+    gap: 24,
     alignItems: "start",
   },
-  card: {
-    background: "var(--color-white)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 20,
-    padding: "18px 20px",
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: 14,
-    minWidth: 0,
-  },
-  h2: { fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--color-ink)", margin: 0 },
-  label: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11,
-    fontWeight: 500,
-    color: "var(--color-teal-deep)",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.06em",
-    opacity: 0.7,
-    margin: 0,
-  },
-  actions: { display: "flex", gap: 8, flexWrap: "wrap" as const },
-  primaryBtn: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-gold)",
-    color: "var(--color-on-light)",
-    border: "none",
-    borderRadius: 9999,
-    padding: "9px 18px",
-    fontWeight: 600,
-    fontSize: 14,
-    cursor: "pointer",
-    textDecoration: "none",
-  },
-  secondaryBtn: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-surface)",
-    color: "var(--color-ink)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 9999,
-    padding: "8px 16px",
-    fontWeight: 500,
-    fontSize: 14,
-    cursor: "pointer",
-    textDecoration: "none",
-  },
-  input: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-surface)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 8,
-    color: "var(--color-ink)",
-    fontSize: 14,
-    padding: "9px 11px",
-    outline: "none",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  },
-  formWrap: { border: "1.5px solid var(--color-lavender)", borderRadius: 14, paddingTop: 14, marginLeft: -4, marginRight: -4 },
+  card: { padding: 24, display: "flex", flexDirection: "column" as const, gap: 14, minWidth: 0 },
+  h2: { fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, margin: 0 },
+  actions: { display: "flex", gap: 10, flexWrap: "wrap" as const },
+  formWrap: { paddingTop: 14 },
   list: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column" as const, gap: 6 },
   row: {
     display: "block",
     textDecoration: "none",
-    color: "var(--color-ink)",
-    padding: "9px 11px",
-    borderRadius: 10,
-    border: "1.5px solid var(--color-lavender)",
-    background: "var(--color-surface)",
+    color: "var(--foreground)",
+    padding: "9px 12px",
+    borderRadius: "var(--radius-btn)",
+    border: "1.5px solid var(--hairline)",
+    background: "var(--inset)",
   },
   rowTop: { display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" as const },
-  rowName: { fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600 },
-  meta: { fontFamily: "var(--font-mono)", fontSize: 11.5, color: "var(--color-teal-deep)" },
+  rowName: { fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 700 },
   chips: { display: "flex", flexWrap: "wrap" as const, gap: 5, marginTop: 6 },
-  chip: (color: string) => ({
+  // Square name tags; the left bar carries the node type color.
+  tag: (color: string) => ({
     fontFamily: "var(--font-body)",
     fontSize: 12,
-    padding: "2px 9px",
-    borderRadius: 9999,
-    border: `1.5px solid ${color}`,
-    color: "var(--color-ink)",
+    padding: "1px 8px",
+    background: "var(--inset)",
+    borderLeft: `4px solid ${color}`,
   }),
-  dot: (color: string) => ({
-    display: "inline-block",
-    width: 8,
-    height: 8,
-    borderRadius: 9999,
-    background: color,
-    flexShrink: 0,
-  }),
-  empty: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--color-teal-deep)", margin: 0, opacity: 0.8 },
-  error: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--color-danger)", margin: 0 },
+  dot: (color: string) => ({ display: "inline-block", width: 9, height: 9, background: color, flexShrink: 0 }),
+  empty: { fontFamily: "var(--font-body)", fontSize: 13.5, color: "var(--muted-foreground)", margin: 0 },
 };
 
 // "2026-10-13" → "Tue, Oct 13". Built from parts so it's the local calendar day, never shifted by UTC.
@@ -186,16 +117,16 @@ export function Dashboard({ token }: { token: string }) {
       </header>
 
       <div style={s.grid}>
-        <section style={s.card} aria-labelledby="quick-heading">
+        <section className="card" style={s.card} aria-labelledby="quick-heading">
           <h2 id="quick-heading" style={s.h2}>
             Quick actions
           </h2>
           <div style={s.actions}>
-            <button type="button" style={s.primaryBtn} aria-expanded={logging} onClick={() => setLogging(!logging)}>
+            <button type="button" className="btn btn-primary" aria-expanded={logging} onClick={() => setLogging(!logging)}>
               {logging ? "Close" : "Log a meeting"}
             </button>
-            <a href={graphHref} style={s.secondaryBtn}>
-              Open graph →
+            <a href={graphHref} className="btn btn-outline">
+              Open graph
             </a>
           </div>
 
@@ -213,7 +144,7 @@ export function Dashboard({ token }: { token: string }) {
           )}
 
           <input
-            style={s.input}
+            className="input"
             type="search"
             placeholder="Search people, groups, meetings, topics…"
             aria-label="Search your graph"
@@ -229,7 +160,7 @@ export function Dashboard({ token }: { token: string }) {
                     <span style={s.rowTop}>
                       <span style={s.dot(NODE_TYPE_COLOR[n.type])} />
                       <span style={s.rowName}>{n.name}</span>
-                      <span style={s.meta}>{NODE_TYPE_LABEL[n.type]}</span>
+                      <span className="meta">{NODE_TYPE_LABEL[n.type]}</span>
                     </span>
                   </a>
                 </li>
@@ -237,7 +168,7 @@ export function Dashboard({ token }: { token: string }) {
             </ul>
           )}
 
-          <p style={s.label}>Recent meetings</p>
+          <p className="label" style={{ margin: "6px 0 0" }}>Recent meetings</p>
           {!data && !error && <p style={s.empty}>Loading…</p>}
           {data && data.recentMeetings.length === 0 && <p style={s.empty}>No meetings yet. Log one above.</p>}
           {data && data.recentMeetings.length > 0 && (
@@ -246,15 +177,15 @@ export function Dashboard({ token }: { token: string }) {
                 <li key={m.id}>
                   <a href={focusHref(m.id)} style={s.row}>
                     <span style={s.rowTop}>
-                      <span style={s.meta}>{formatDate(m.date)}</span>
+                      <span className="meta">{formatDate(m.date)}</span>
                       <span style={s.rowName}>{m.name}</span>
-                      {m.kind === "event" && <span style={s.meta}>event</span>}
+                      {m.kind === "event" && <span className="meta">event</span>}
                     </span>
                     {(m.group || m.attendees.length > 0) && (
                       <span style={s.chips}>
-                        {m.group && <span style={s.chip(NODE_TYPE_COLOR.group)}>{m.group.name}</span>}
+                        {m.group && <span style={s.tag(NODE_TYPE_COLOR.group)}>{m.group.name}</span>}
                         {m.attendees.map((p) => (
-                          <span key={p.id} style={s.chip(NODE_TYPE_COLOR.person)}>
+                          <span key={p.id} style={s.tag(NODE_TYPE_COLOR.person)}>
                             {p.name}
                           </span>
                         ))}
@@ -266,13 +197,13 @@ export function Dashboard({ token }: { token: string }) {
             </ul>
           )}
           {error && (
-            <p role="alert" style={s.error}>
+            <p role="alert" className="error-text">
               {error}
             </p>
           )}
         </section>
 
-        <section style={s.card} aria-labelledby="threads-heading">
+        <section className="card" style={s.card} aria-labelledby="threads-heading">
           <h2 id="threads-heading" style={s.h2}>
             Your threads
           </h2>
@@ -287,7 +218,7 @@ export function Dashboard({ token }: { token: string }) {
                       <span style={s.dot(NODE_TYPE_COLOR.topic)} />
                       <span style={s.rowName}>{t.name}</span>
                     </span>
-                    <span style={{ ...s.meta, display: "block", marginTop: 4 }}>
+                    <span className="meta" style={{ display: "block", marginTop: 4 }}>
                       {t.peopleCount} {t.peopleCount === 1 ? "person" : "people"} ·{" "}
                       {plural(t.meetingCount, "meeting")} · last {formatDate(t.lastMeetingDate)}
                     </span>

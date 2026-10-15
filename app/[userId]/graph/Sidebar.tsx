@@ -11,8 +11,7 @@ const s = {
   sidebar: {
     width: 300,
     flexShrink: 0,
-    borderRight: "1.5px solid var(--color-lavender)",
-    background: "var(--color-white)",
+    borderRight: "1.5px solid var(--hairline)",
     display: "flex",
     flexDirection: "column" as const,
     height: "100vh",
@@ -20,126 +19,41 @@ const s = {
     top: 0,
     overflowY: "auto" as const,
   },
-  section: {
-    padding: "16px 18px",
-    borderBottom: "1.5px solid var(--color-lavender)",
-  },
-  h1: {
-    fontFamily: "var(--font-display)",
-    fontSize: 22,
-    fontWeight: 600,
-    color: "var(--color-ink)",
-    margin: "0 0 14px 0",
-  },
-  input: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-surface)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 8,
-    color: "var(--color-ink)",
-    fontSize: 14,
-    padding: "9px 11px",
-    outline: "none",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  },
-  label: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11,
-    fontWeight: 500,
-    color: "var(--color-teal-deep)",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.06em",
-    opacity: 0.6,
-    margin: "0 0 8px 0",
-  },
-  chipRow: {
-    display: "flex",
-    flexWrap: "wrap" as const,
-    gap: 6,
-    marginTop: 8,
-  },
-  chip: (active: boolean) => ({
-    fontFamily: "var(--font-body)",
-    fontSize: 12,
-    fontWeight: 500,
-    padding: "5px 10px",
-    borderRadius: 9999,
-    border: `1.5px solid ${active ? "var(--color-teal-deep)" : "var(--color-lavender)"}`,
-    background: active ? "var(--color-teal-deep)" : "transparent",
-    color: active ? "var(--color-white)" : "var(--color-ink)",
-    cursor: "pointer",
+  section: { padding: "16px 18px", borderBottom: "1.5px solid var(--hairline)" },
+  h1: { fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, margin: "0 0 14px 0" },
+  chipRow: { display: "flex", flexWrap: "wrap" as const, gap: 6, marginTop: 8 },
+  // Type filters: square chips filled with the type color when on.
+  typeChip: (active: boolean, color: string, text: string) => ({
+    ...(active ? { background: color, borderColor: color, color: text } : {}),
   }),
-  typeChip: (active: boolean, color: string, text = "var(--color-white)") => ({
-    fontFamily: "var(--font-body)",
-    fontSize: 12,
-    fontWeight: 500,
-    padding: "5px 10px",
-    borderRadius: 9999,
-    border: `1.5px solid ${active ? color : "var(--color-lavender)"}`,
-    background: active ? color : "transparent",
-    color: active ? text : "var(--color-ink)",
-    cursor: "pointer",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-  }),
-  dot: (color: string) => ({
-    width: 8,
-    height: 8,
-    borderRadius: "50%",
-    background: color,
-    display: "inline-block",
-    flexShrink: 0,
-  }),
+  dot: (color: string) => ({ width: 9, height: 9, background: color, display: "inline-block", flexShrink: 0 }),
   orphanRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 8,
     padding: "8px 10px",
-    borderRadius: 8,
-    background: "var(--color-surface)",
+    borderRadius: "var(--radius-btn)",
+    background: "var(--inset)",
     fontFamily: "var(--font-body)",
     fontSize: 13,
     cursor: "pointer",
     marginBottom: 6,
   },
-  orphanBadge: {
-    fontFamily: "var(--font-mono)",
-    fontSize: 10,
-    color: "var(--color-gold)",
-  },
-  list: {
-    flexShrink: 0,
-  },
+  list: { flexShrink: 0 },
+  // Selected: a solid foreground bar on the left plus the inset tint.
   listItem: (active: boolean) => ({
     display: "flex",
     flexDirection: "column" as const,
     gap: 3,
     padding: "10px 18px",
-    borderBottom: "1px solid var(--color-lavender)",
-    background: active ? "var(--color-surface)" : "transparent",
+    borderBottom: "1px solid var(--hairline)",
+    background: active ? "var(--inset)" : "transparent",
+    boxShadow: active ? "inset 4px 0 0 var(--foreground)" : "none",
     cursor: "pointer",
   }),
-  itemName: {
-    fontFamily: "var(--font-body)",
-    fontSize: 14,
-    fontWeight: 500,
-    color: "var(--color-ink)",
-  },
-  itemMeta: {
-    fontFamily: "var(--font-mono)",
-    fontSize: 11,
-    color: "var(--color-teal-deep)",
-    opacity: 0.7,
-  },
-  empty: {
-    fontFamily: "var(--font-body)",
-    fontSize: 13,
-    color: "var(--color-teal-deep)",
-    opacity: 0.6,
-    padding: "18px",
-  },
+  itemName: { fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 500 },
+  empty: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted-foreground)", padding: 18, margin: 0 },
 };
 
 type SidebarProps = {
@@ -191,14 +105,14 @@ export function Sidebar({
   const orphanNodes = initialNodes.filter((n) => orphanIds.includes(n.id));
 
   return (
-    <div style={{ ...s.sidebar, width: isMobile ? "100%" : s.sidebar.width, height: isMobile ? "auto" : s.sidebar.height, position: isMobile ? "static" : s.sidebar.position }}>
+    <div className="panel" style={{ ...s.sidebar, width: isMobile ? "100%" : s.sidebar.width, height: isMobile ? "auto" : s.sidebar.height, position: isMobile ? "static" : s.sidebar.position }}>
       <div style={s.section}>
         <h1 style={{ ...s.h1, margin: "0 0 8px 0" }}>Vertex</h1>
-        <div style={{ margin: "0 0 14px -8px" }}>
+        <div style={{ margin: "0 0 14px" }}>
           <AppNav token={userId} current="graph" />
         </div>
         <input
-          style={s.input}
+          className="input"
           placeholder="Search nodes…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -206,7 +120,7 @@ export function Sidebar({
         <div style={{ ...s.chipRow, marginTop: 10 }} role="group" aria-label="Filter by type">
           <button
             type="button"
-            style={s.typeChip(type === "", "var(--color-ink)")}
+            className="chip"
             aria-pressed={type === ""}
             onClick={() => setType("")}
           >
@@ -216,6 +130,7 @@ export function Sidebar({
             <button
               key={t}
               type="button"
+              className="chip"
               style={s.typeChip(type === t, NODE_TYPE_COLOR[t], NODE_TYPE_TEXT[t])}
               aria-pressed={type === t}
               onClick={() => setType(type === t ? "" : t)}
@@ -229,13 +144,15 @@ export function Sidebar({
 
       {allTags.length > 0 && (
         <div style={s.section}>
-          <p style={s.label}>Tags</p>
+          <p className="label">Tags</p>
           <div style={s.chipRow}>
             {allTags.map((tag) => (
               <button
                 key={tag}
                 type="button"
-                style={s.chip(selectedTags.includes(tag))}
+                className="chip"
+                style={{ textTransform: "none" }}
+                aria-pressed={selectedTags.includes(tag)}
                 onClick={() => toggleTag(tag)}
               >
                 {tag}
@@ -250,7 +167,9 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => setOrphansOpen((v) => !v)}
-            style={{ ...s.label, background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            className="label"
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, margin: 0 }}
+            aria-expanded={orphansOpen}
           >
             {orphansOpen ? "▾" : "▸"} Orphans ({orphanNodes.length})
           </button>
@@ -263,7 +182,7 @@ export function Sidebar({
                 return (
                   <div key={n.id} style={s.orphanRow} onClick={() => onSelectNode(n.id)}>
                     <span>{n.name}</span>
-                    <span style={s.orphanBadge}>{days}d unconnected</span>
+                    <span className="meta" style={{ flexShrink: 0 }}>{days}d unconnected</span>
                   </div>
                 );
               })}
@@ -283,7 +202,7 @@ export function Sidebar({
               onClick={() => onSelectNode(n.id)}
             >
               <span style={s.itemName}>{n.name}</span>
-              <span style={{ ...s.itemMeta, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <span style={s.dot(NODE_TYPE_COLOR[n.type])} />
                 {n.type === "meeting" ? n.fields.date : n.type}
               </span>

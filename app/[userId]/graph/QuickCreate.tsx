@@ -9,22 +9,8 @@ import { NODE_TYPE_LABEL } from "./typeColors";
 export type QuickTab = "closed" | "meeting" | "node" | "edge";
 
 const s = {
-  bar: {
-    borderTop: "1.5px solid var(--color-lavender)",
-    background: "var(--color-white)",
-  },
+  bar: { borderTop: "1.5px solid var(--hairline)" },
   tabRow: { display: "flex", gap: 8, padding: "10px 18px", flexWrap: "wrap" as const },
-  tabBtn: (active: boolean) => ({
-    fontFamily: "var(--font-body)",
-    fontSize: 13,
-    fontWeight: 500,
-    padding: "8px 16px",
-    borderRadius: 9999,
-    border: `1.5px solid ${active ? "var(--color-teal-deep)" : "var(--color-lavender)"}`,
-    background: active ? "var(--color-teal-deep)" : "transparent",
-    color: active ? "var(--color-white)" : "var(--color-ink)",
-    cursor: "pointer",
-  }),
   form: {
     padding: "0 18px 18px",
     display: "flex",
@@ -32,57 +18,9 @@ const s = {
     gap: 10,
     maxWidth: 480,
   },
-  input: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-surface)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 8,
-    color: "var(--color-ink)",
-    fontSize: 14,
-    padding: "9px 11px",
-    outline: "none",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  },
-  textarea: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-surface)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 8,
-    color: "var(--color-ink)",
-    fontSize: 14,
-    padding: "9px 11px",
-    outline: "none",
-    width: "100%",
-    minHeight: 60,
-    resize: "vertical" as const,
-    boxSizing: "border-box" as const,
-  },
+  textarea: { minHeight: 60, resize: "vertical" as const },
   row: { display: "flex", gap: 10 },
-  submitBtn: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-gold)",
-    color: "var(--color-on-light)",
-    border: "none",
-    borderRadius: 9999,
-    padding: "10px 20px",
-    fontWeight: 600,
-    fontSize: 14,
-    cursor: "pointer",
-    alignSelf: "flex-start" as const,
-  },
-  pairHint: {
-    fontFamily: "var(--font-body)",
-    fontSize: 12,
-    color: "var(--color-teal-deep)",
-    margin: 0,
-  },
-  error: {
-    fontFamily: "var(--font-body)",
-    color: "var(--color-danger)",
-    fontSize: 12,
-    margin: 0,
-  },
+  pairHint: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--muted-foreground)", margin: 0 },
 };
 
 type QuickCreateProps = {
@@ -195,25 +133,28 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
   };
 
   return (
-    <div style={s.bar}>
+    <div className="panel" style={s.bar}>
       <div style={s.tabRow}>
         <button
           type="button"
-          style={s.tabBtn(tab === "meeting")}
+          className="chip"
+          aria-pressed={tab === "meeting"}
           onClick={() => setTab(tab === "meeting" ? "closed" : "meeting")}
         >
           + Log a meeting / event
         </button>
         <button
           type="button"
-          style={s.tabBtn(tab === "node")}
+          className="chip"
+          aria-pressed={tab === "node"}
           onClick={() => setTab(tab === "node" ? "closed" : "node")}
         >
           + New Node
         </button>
         <button
           type="button"
-          style={s.tabBtn(tab === "edge")}
+          className="chip"
+          aria-pressed={tab === "edge"}
           onClick={() => setTab(tab === "edge" ? "closed" : "edge")}
         >
           + New Edge
@@ -233,7 +174,7 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
 
       {tab === "node" && (
         <div style={s.form}>
-          <select style={s.input} value={nodeType} onChange={(e) => setNodeType(e.target.value as NodeType)}>
+          <select className="input" value={nodeType} onChange={(e) => setNodeType(e.target.value as NodeType)}>
             {NODE_TYPES.map((t) => (
               <option key={t} value={t}>
                 {NODE_TYPE_LABEL[t]}
@@ -242,7 +183,7 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
           </select>
           {nodeType === "meeting" && (
             <input
-              style={s.input}
+              className="input"
               type="date"
               aria-label="Meeting date"
               value={meetingDate}
@@ -250,25 +191,26 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
             />
           )}
           <input
-            style={s.input}
+            className="input"
             placeholder={nodeType === "meeting" ? "Name (optional — defaults to the date)" : "Name"}
             value={nodeName}
             onChange={(e) => setNodeName(e.target.value)}
           />
           <textarea
+            className="input"
             style={s.textarea}
             placeholder="Description (optional)"
             value={nodeDescription}
             onChange={(e) => setNodeDescription(e.target.value)}
           />
           <input
-            style={s.input}
+            className="input"
             placeholder="Tags, comma-separated (e.g. ud, mentorship)"
             value={nodeTags}
             onChange={(e) => setNodeTags(e.target.value)}
           />
-          {nodeError && <p style={s.error}>{nodeError}</p>}
-          <button type="button" style={s.submitBtn} onClick={submitNode}>
+          {nodeError && <p className="error-text">{nodeError}</p>}
+          <button type="button" className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={submitNode}>
             Create node
           </button>
         </div>
@@ -284,14 +226,14 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
           </datalist>
           <div style={s.row}>
             <input
-              style={s.input}
+              className="input"
               list="quickcreate-node-names"
               placeholder="From node"
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
             />
             <input
-              style={s.input}
+              className="input"
               list="quickcreate-node-names"
               placeholder="To node"
               value={toName}
@@ -305,7 +247,7 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
             </p>
           )}
           <select
-            style={s.input}
+            className="input"
             value={chosenType}
             onChange={(e) => setEdgeType(e.target.value as EdgeType)}
             aria-label="Edge type"
@@ -317,19 +259,21 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
             ))}
           </select>
           <textarea
+            className="input"
             style={s.textarea}
             placeholder="Source (optional) — e.g. where you learned this"
             value={evidence}
             onChange={(e) => setEvidence(e.target.value)}
           />
           <textarea
+            className="input"
             style={s.textarea}
             placeholder="Notes (optional)"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
-          {edgeError && <p style={s.error}>{edgeError}</p>}
-          <button type="button" style={s.submitBtn} onClick={submitEdge}>
+          {edgeError && <p className="error-text">{edgeError}</p>}
+          <button type="button" className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={submitEdge}>
             Create edge
           </button>
         </div>

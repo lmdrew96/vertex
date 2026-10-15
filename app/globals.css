@@ -1,42 +1,86 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Space+Grotesk:wght@400;500;600&family=Geist+Mono:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Fredoka:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap');
 
+/* ADHDesigns 2026 tokens (adhdesigns-theme skill). Arcade (dark) is the default;
+   the inline script in layout.tsx switches to Paper (light) from localStorage. */
 :root {
-  --color-olive:     #849440;
-  --color-teal-deep: #244952;
-  --color-gold:      #DFA649;
-  --color-purple:    #88739E;
-  --color-mint:      #8CBDB9;
-  --color-green:     #97D181;
-  --color-lavender:  #DBD5E2;
-  --color-surface:   #F7F5FA;
-  --color-ink:       #1E1830;
-  --color-white:     #FFFFFF;
-  --color-danger:    #c0392b;
-  /* Text on the type/accent fills (gold, mint, purple, teal-deep). */
-  --color-on-light:  #1E1830;
-  --color-on-dark:   #FFFFFF;
+  /* Raw palette */
+  --muted-indigo: #665c99;
+  --muted-indigo-text: #524a7a;
+  --indigo-void: #140f22;
+  --indigo-deep: #241d38;
+  --bone: #ede6d2;
+  --bone-dim: #e3dcc6;
+  --caution-amber: #f2cb05;
+  --dusty-cyan: #5fc2c0;
+  --sage-green: #7fa88c;
+  --olive: #7c8449;
+  --olive-text: #575c33;
+  --magenta: #642644; /* effect only */
+  --pink: #ff8fcb;    /* effect only */
+  --text-on-bone: #2a2a2a;
 
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body:    'Space Grotesk', system-ui, sans-serif;
-  --font-mono:    'Geist Mono', 'Fira Code', monospace;
-}
+  /* Semantic — Arcade */
+  --background: var(--muted-indigo);
+  --foreground: var(--bone);
+  --muted-foreground: var(--bone);
+  --card: var(--indigo-deep);
+  --card-foreground: var(--bone);
+  --border: var(--dusty-cyan);
+  --ring: var(--dusty-cyan);
+  --ring-page: var(--bone);
+  --hairline: rgba(237, 230, 210, .16);
+  --hairline-strong: rgba(237, 230, 210, .4);
+  --destructive: var(--caution-amber); /* marker color; always paired with words */
+  --destructive-text: var(--caution-amber);
+  --inset: color-mix(in srgb, var(--foreground) 7%, transparent);
+  --glass: color-mix(in srgb, var(--foreground) 8%, transparent);
 
-/* Dark (default; the inline script in layout.tsx switches to light from localStorage).
-   ADHDesigns Arcade values mapped onto Vertex's roles: page Indigo-Void, panels Indigo-Deep,
-   text Bone, accent Dusty Cyan, borders Muted Indigo, errors Caution Amber (never red). */
-[data-theme="dark"] {
-  --color-teal-deep: #5fc2c0;
-  --color-lavender:  #665c99;
-  --color-surface:   #140f22;
-  --color-ink:       #ede6d2;
-  --color-white:     #241d38;
-  --color-danger:    #f2cb05;
-  --color-on-light:  #140f22;
-  --color-on-dark:   #140f22;
+  /* Graph node types: fill, with Indigo-Void labels on all four */
+  --node-person: var(--caution-amber);
+  --node-group: var(--dusty-cyan);
+  --node-meeting: var(--sage-green);
+  --node-topic: var(--bone);
+  --node-label: var(--indigo-void);
+
+  /* Graph edge strokes, picked to stay visible on each theme's page */
+  --edge-main: var(--bone);
+  --edge-accent: var(--dusty-cyan);
+  --edge-strong: var(--caution-amber);
+
+  /* Type */
+  --font-display: kineksRound, Fredoka, system-ui, sans-serif;
+  --font-body: raelaGrotesque, "DM Sans", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  /* Shape & depth */
+  --radius-btn: 12px;
+  --radius: 16px;
+  --shadow-hard: 3px 3px 0 var(--magenta);
+  --shadow-hard-lift: 4px 5px 0 var(--magenta);
+
   color-scheme: dark;
 }
 
-/* Let the page surface show through the graph canvas in both themes. */
+/* Paper (light) */
+[data-theme="light"] {
+  --background: var(--bone-dim);
+  --foreground: var(--indigo-void);
+  --muted-foreground: #4a4170;
+  --card: var(--bone);
+  --card-foreground: var(--indigo-void);
+  --border: var(--muted-indigo);   /* Dusty Cyan is too faint on Bone */
+  --ring: var(--muted-indigo);
+  --ring-page: var(--muted-indigo);
+  --hairline: rgba(20, 15, 34, .14);
+  --hairline-strong: rgba(20, 15, 34, .4);
+  --destructive-text: var(--indigo-void); /* Amber text is unreadable on Bone */
+  --edge-main: var(--indigo-void);
+  --edge-accent: var(--muted-indigo);
+  --edge-strong: var(--magenta);
+  color-scheme: light;
+}
+
+/* Let the page show through the graph canvas in both themes. */
 .react-flow { --xy-background-color: transparent; }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -44,25 +88,173 @@
 body {
   margin: 0;
   font-family: var(--font-body);
-  background-color: var(--color-surface);
-  color: var(--color-ink);
+  background-color: var(--background);
+  color: var(--foreground);
   font-size: 1rem;
-  line-height: 1.56;
+  line-height: 1.5;
+}
+
+a { color: inherit; }
+
+:focus-visible { outline: 2px solid var(--ring-page); outline-offset: 2px; }
+.panel :focus-visible, .card :focus-visible { outline-color: var(--ring); }
+
+/* ── Shared controls ─────────────────────────────────────────────────────── */
+
+/* Buttons: Geist Mono UPPERCASE, 12px corners, never pills. */
+.btn {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  border-radius: var(--radius-btn);
+  padding: 9px 16px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+}
+.btn:disabled { opacity: .5; cursor: default; }
+
+.btn-primary {
+  background: var(--bone);
+  color: var(--indigo-void);
+  border: 2px solid var(--foreground);
+  box-shadow: var(--shadow-hard);
+}
+.btn-primary:hover:not(:disabled) { transform: translate(-1px, -2px); box-shadow: var(--shadow-hard-lift); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--foreground);
+  border: 2px solid var(--foreground);
+}
+.btn-outline:hover:not(:disabled) { background: var(--hairline); }
+
+/* Small row actions (Archive, Delete, Copy, Cancel…). */
+.btn-sm { font-size: 11px; letter-spacing: .6px; padding: 4px 9px; border-width: 1.5px; }
+
+/* Text-only button for quiet actions (sign out, rotate). */
+.btn-quiet {
+  background: none;
+  border: none;
+  color: var(--foreground);
+  padding: 2px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Toggle/tab/filter chips: square, mono. Selected = hard Magenta shadow. */
+.chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  border-radius: 0;
+  padding: 4px 9px;
+  border: 1.5px solid var(--hairline-strong);
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip[aria-pressed="true"], .chip[aria-current="page"], .chip[aria-selected="true"] {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+  box-shadow: var(--shadow-hard);
+}
+
+.input {
+  font-family: var(--font-body);
+  font-size: 14px;
+  background: var(--card);
+  color: var(--foreground);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  outline: none;
+  width: 100%;
+}
+.input::placeholder { color: var(--muted-foreground); opacity: .6; }
+.input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+
+/* Section labels and metadata. */
+.label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin: 0 0 8px;
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* Errors: words first, an amber marker, never red. */
+.error-text {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--destructive-text);
+  border-left: 3px solid var(--destructive);
+  padding-left: 8px;
+  margin: 0;
+}
+
+/* Surfaces */
+.panel { background: var(--card); color: var(--card-foreground); }
+.card {
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid var(--hairline);
+  border-radius: var(--radius);
+  color: var(--foreground);
+}
+.card-solid {
+  background: var(--card);
+  border: 1.5px solid var(--hairline);
+  border-radius: var(--radius);
+  color: var(--card-foreground);
+}
+
+/* Hero title: signed-out landing only. */
+.hero-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-shadow: 3px 3px 0 var(--pink), 6px 6px 0 var(--muted-indigo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn-primary:hover { transition: none; transform: none; }
 }
 
 /* ── Markdown (app/Markdown.tsx) ─────────────────────────────────────────── */
-.md { font-family: var(--font-body); font-size: 14px; line-height: 1.6; color: var(--color-ink); overflow-wrap: anywhere; }
+.md { font-family: var(--font-body); font-size: 14px; line-height: 1.6; color: inherit; overflow-wrap: anywhere; }
 .md > :first-child { margin-top: 0; }
 .md > :last-child { margin-bottom: 0; }
 .md p, .md ul, .md ol, .md blockquote, .md pre, .md table { margin: 0 0 10px; }
-.md h1, .md h2, .md h3, .md h4 { font-family: var(--font-display); font-weight: 600; margin: 14px 0 6px; line-height: 1.25; }
-.md h1 { font-size: 20px; } .md h2 { font-size: 18px; } .md h3, .md h4 { font-size: 16px; }
+.md h1, .md h2, .md h3, .md h4 { font-family: var(--font-display); font-weight: 700; margin: 14px 0 6px; line-height: 1.25; }
+.md h1 { font-size: 20px; } .md h2 { font-size: 18px; } .md h3, .md h4 { font-size: 15px; text-transform: uppercase; letter-spacing: .6px; }
 .md ul, .md ol { padding-left: 22px; }
 .md li > ul, .md li > ol { margin: 2px 0; }
-.md a { color: var(--color-teal-deep); text-decoration: underline; }
-.md code { font-family: var(--font-mono); font-size: 12.5px; background: var(--color-surface); border: 1px solid var(--color-lavender); border-radius: 4px; padding: 1px 4px; }
-.md pre { background: var(--color-surface); border: 1px solid var(--color-lavender); border-radius: 8px; padding: 10px 12px; overflow-x: auto; }
+.md a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.md code { font-family: var(--font-mono); font-size: 12.5px; background: var(--inset); border: 1px solid var(--hairline); border-radius: 4px; padding: 1px 4px; }
+.md pre { background: var(--inset); border: 1px solid var(--hairline); border-radius: 12px; padding: 10px 12px; overflow-x: auto; }
 .md pre code { background: none; border: none; padding: 0; }
-.md blockquote { border-left: 3px solid var(--color-lavender); padding-left: 12px; color: var(--color-teal-deep); }
+.md blockquote { border-left: 3px solid var(--border); padding-left: 12px; color: var(--muted-foreground); }
 .md table { border-collapse: collapse; display: block; overflow-x: auto; }
-.md th, .md td { border: 1px solid var(--color-lavender); padding: 4px 8px; text-align: left; }
+.md th, .md td { border: 1px solid var(--hairline-strong); padding: 4px 8px; text-align: left; }

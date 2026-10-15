@@ -1,19 +1,19 @@
 import type { NodeType } from "@/lib/types";
 
-// One color per node type, from the theme tokens in globals.css.
+// One fill per node type, from the theme tokens in globals.css.
 export const NODE_TYPE_COLOR: Record<NodeType, string> = {
-  person: "var(--color-gold)",
-  group: "var(--color-teal-deep)",
-  meeting: "var(--color-mint)",
-  topic: "var(--color-purple)",
+  person: "var(--node-person)",
+  group: "var(--node-group)",
+  meeting: "var(--node-meeting)",
+  topic: "var(--node-topic)",
 };
 
-// Readable text on each fill in both themes (the dark theme lightens teal-deep, so its text flips).
+// Label text on each fill: Indigo-Void reads on all four in both themes.
 export const NODE_TYPE_TEXT: Record<NodeType, string> = {
-  person: "var(--color-on-light)",
-  group: "var(--color-on-dark)",
-  meeting: "var(--color-on-light)",
-  topic: "var(--color-on-dark)",
+  person: "var(--node-label)",
+  group: "var(--node-label)",
+  meeting: "var(--node-label)",
+  topic: "var(--node-label)",
 };
 
 // How each type reads in the UI. Meeting nodes cover events too (fields.kind says which).

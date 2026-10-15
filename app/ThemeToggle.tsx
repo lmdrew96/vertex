@@ -35,26 +35,14 @@ const setThemeEverywhere = (next: Theme): void => {
 /** Runs before first paint (inlined in layout.tsx) so a light-theme visitor never sees a dark flash. */
 export const THEME_INIT_SCRIPT = `try{if(localStorage.getItem("${STORAGE_KEY}")==="light")document.documentElement.dataset.theme="light"}catch(e){}`;
 
-const style = {
-  fontFamily: "var(--font-mono)",
-  fontSize: 11,
-  letterSpacing: "0.5px",
-  textTransform: "uppercase" as const,
-  background: "transparent",
-  color: "var(--color-ink)",
-  border: "1.5px solid var(--color-lavender)",
-  borderRadius: 9999,
-  padding: "4px 10px",
-  cursor: "pointer",
-};
-
 export function ThemeToggle({ extraStyle }: { extraStyle?: React.CSSProperties }) {
   const theme = useTheme();
   const next: Theme = theme === "dark" ? "light" : "dark";
   return (
     <button
       type="button"
-      style={{ ...style, ...extraStyle }}
+      className="btn btn-outline btn-sm"
+      style={extraStyle}
       onClick={() => setThemeEverywhere(next)}
       aria-label={`Switch to ${next} theme`}
       title={`Switch to ${next} theme`}

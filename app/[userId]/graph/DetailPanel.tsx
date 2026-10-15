@@ -29,8 +29,7 @@ const s = {
           right: 0,
           height: "100vh",
           width: "100%",
-          background: "var(--color-white)",
-          boxShadow: "-4px 0px 16px rgba(0,0,0,0.08)",
+          background: "var(--card)",
           transform: open ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.2s ease",
           overflowY: "auto" as const,
@@ -45,9 +44,8 @@ const s = {
           // immediately — only the inner content slides, via innerWrap below.
           width: open ? 400 : 0,
           flexShrink: 0,
-          background: "var(--color-white)",
-          borderLeft: open ? "1.5px solid var(--color-lavender)" : "none",
-          boxShadow: open ? "-4px 0px 16px rgba(0,0,0,0.08)" : "none",
+          background: "var(--card)",
+          borderLeft: open ? "1.5px solid var(--hairline-strong)" : "none",
           overflowX: "hidden" as const,
           overflowY: "auto" as const,
           display: "flex",
@@ -63,7 +61,7 @@ const s = {
   }),
   header: {
     padding: "20px 22px 14px",
-    borderBottom: "1.5px solid var(--color-lavender)",
+    borderBottom: "1.5px solid var(--hairline-strong)",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
@@ -73,7 +71,7 @@ const s = {
     background: "none",
     border: "none",
     fontSize: 18,
-    color: "var(--color-teal-deep)",
+    color: "var(--muted-foreground)",
     cursor: "pointer",
     lineHeight: 1,
     padding: 4,
@@ -82,7 +80,7 @@ const s = {
     fontFamily: "var(--font-display)",
     fontSize: 22,
     fontWeight: 600,
-    color: "var(--color-ink)",
+    color: "var(--foreground)",
     margin: "0 0 6px 0",
     overflowWrap: "anywhere" as const,
   },
@@ -90,25 +88,17 @@ const s = {
   badge: (color: string, text: string) => ({
     fontFamily: "var(--font-mono)",
     fontSize: 11,
+    letterSpacing: "0.5px",
+    textTransform: "uppercase" as const,
     color: text,
     background: color,
-    borderRadius: 9999,
-    padding: "3px 10px",
+    borderRadius: "var(--radius-btn)",
+    padding: "3px 9px",
     display: "inline-block",
   }),
-  lastMet: { fontFamily: "var(--font-body)", fontSize: 12, color: "var(--color-teal-deep)", opacity: 0.8 },
+  lastMet: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--muted-foreground)" },
   body: { padding: "18px 22px", flex: 1 },
   section: { marginBottom: 22 },
-  sectionLabel: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11,
-    fontWeight: 600,
-    color: "var(--color-teal-deep)",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.06em",
-    opacity: 0.7,
-    margin: "0 0 8px 0",
-  },
   fields: {
     display: "grid",
     gridTemplateColumns: "auto 1fr",
@@ -117,41 +107,41 @@ const s = {
     fontSize: 13.5,
     margin: "0 0 18px",
   },
-  fieldKey: { color: "var(--color-teal-deep)", opacity: 0.75 },
-  fieldVal: { color: "var(--color-ink)", overflowWrap: "anywhere" as const, margin: 0 },
+  fieldKey: { fontFamily: "var(--font-mono)", fontSize: 11.5, textTransform: "uppercase" as const, letterSpacing: "0.4px", color: "var(--muted-foreground)", paddingTop: 2 },
+  fieldVal: { color: "var(--foreground)", overflowWrap: "anywhere" as const, margin: 0 },
   chipRow: { display: "flex", flexWrap: "wrap" as const, gap: 6 },
   tag: {
     fontFamily: "var(--font-mono)",
     fontSize: 11,
     padding: "3px 9px",
-    borderRadius: 9999,
-    background: "var(--color-surface)",
-    color: "var(--color-teal-deep)",
-    border: "1px solid var(--color-lavender)",
+    background: "var(--inset)",
+    color: "var(--foreground)",
+    border: "1px solid var(--hairline-strong)",
   },
+  // Square, with the node type color as a left bar.
   nodeChip: (color: string) => ({
     fontFamily: "var(--font-body)",
-    fontSize: 12.5,
-    padding: "5px 11px",
-    borderRadius: 9999,
-    border: `1.5px solid ${color}`,
-    background: "var(--color-white)",
-    color: "var(--color-ink)",
+    fontSize: 13,
+    padding: "4px 10px",
+    border: "none",
+    borderLeft: `4px solid ${color}`,
+    background: "var(--inset)",
+    color: "var(--foreground)",
     cursor: "pointer",
   }),
   ccChip: {
     fontFamily: "var(--font-mono)",
     fontSize: 11,
     padding: "3px 9px",
-    borderRadius: 9999,
-    background: "var(--color-surface)",
-    border: "1px solid var(--color-lavender)",
-    color: "var(--color-teal-deep)",
+    textTransform: "uppercase" as const,
+    background: "var(--inset)",
+    border: "1px solid var(--hairline-strong)",
+    color: "var(--foreground)",
   },
   card: {
-    padding: "9px 11px",
-    borderRadius: 8,
-    background: "var(--color-surface)",
+    padding: "9px 12px",
+    borderRadius: "var(--radius-btn)",
+    background: "var(--inset)",
     marginBottom: 6,
     cursor: "pointer",
     fontFamily: "var(--font-body)",
@@ -160,26 +150,14 @@ const s = {
     width: "100%",
     textAlign: "left" as const,
     display: "block",
-    color: "var(--color-ink)",
+    color: "var(--foreground)",
   },
   cardTop: { display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" },
-  cardDate: { fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-teal-deep)", whiteSpace: "nowrap" as const },
-  cardSub: { fontSize: 12, color: "var(--color-teal-deep)", opacity: 0.8, marginTop: 3 },
+  cardDate: { fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted-foreground)", whiteSpace: "nowrap" as const },
+  cardSub: { fontSize: 12.5, color: "var(--muted-foreground)", marginTop: 3 },
   excerpt: { marginTop: 6, fontSize: 12.5 },
-  empty: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-teal-deep)", opacity: 0.7, margin: 0 },
-  footer: { padding: "16px 22px", borderTop: "1.5px solid var(--color-lavender)" },
-  archiveBtn: {
-    fontFamily: "var(--font-body)",
-    background: "none",
-    border: "1.5px solid var(--color-danger)",
-    color: "var(--color-danger)",
-    borderRadius: 9999,
-    padding: "9px 18px",
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: "pointer",
-    width: "100%",
-  },
+  empty: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted-foreground)", margin: 0 },
+  footer: { padding: "16px 22px", borderTop: "1.5px solid var(--hairline)" },
   connRow: { display: "flex", alignItems: "center", gap: 6, marginBottom: 6 },
   connMain: {
     flex: 1,
@@ -187,28 +165,17 @@ const s = {
     textAlign: "left" as const,
     fontFamily: "var(--font-body)",
     fontSize: 13,
-    color: "var(--color-ink)",
-    background: "var(--color-surface)",
+    color: "var(--foreground)",
+    background: "var(--inset)",
     border: "none",
-    borderRadius: 8,
+    borderRadius: "var(--radius-btn)",
     padding: "7px 10px",
     cursor: "pointer",
     overflowWrap: "anywhere" as const,
   },
-  connType: { fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-teal-deep)" },
-  connBtn: {
-    fontFamily: "var(--font-body)",
-    fontSize: 11.5,
-    background: "none",
-    color: "var(--color-ink)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 9999,
-    padding: "3px 9px",
-    cursor: "pointer",
-    flexShrink: 0,
-  },
-  footerError: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-danger)", margin: "10px 0 0" },
-  loading: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--color-teal-deep)", padding: 22 },
+  connType: { fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted-foreground)" },
+  footerError: { marginTop: 10 },
+  loading: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--muted-foreground)", padding: 22 },
 };
 
 // "2026-10-14" → "Wed, Oct 14, 2026". Built from parts so it's the local calendar day, never shifted by UTC.
@@ -339,7 +306,7 @@ export function DetailPanel({
   }
 
   return (
-    <div style={s.panel(open, isMobile)}>
+    <div className="panel" style={s.panel(open, isMobile)}>
       {open && !current && <p style={s.loading}>{error || "Loading…"}</p>}
       {current && node && (
         <div style={s.innerWrap(open, isMobile)}>
@@ -383,7 +350,7 @@ export function DetailPanel({
 
             {node.type === "meeting" && (
               <div style={s.section}>
-                <p style={s.sectionLabel}>Notes</p>
+                <p className="label">Notes</p>
                 {node.fields.notes ? <Markdown>{node.fields.notes}</Markdown> : <p style={s.empty}>No notes.</p>}
                 {current.openFollowUps.length > 0 && (
                   <p style={{ ...s.empty, marginTop: 8 }}>
@@ -396,7 +363,7 @@ export function DetailPanel({
 
             {node.type !== "meeting" && (
               <div style={s.section}>
-                <p style={s.sectionLabel}>Meetings & events ({current.recentMeetings.length})</p>
+                <p className="label">Meetings & events ({current.recentMeetings.length})</p>
                 {current.recentMeetings.length === 0 && <p style={s.empty}>No meetings or events yet.</p>}
                 {current.recentMeetings.map((m) => (
                   <button key={m.id} type="button" style={s.card} onClick={() => onSelectNode(m.id)}>
@@ -420,7 +387,7 @@ export function DetailPanel({
             )}
 
             <div style={s.section}>
-              <p style={s.sectionLabel}>
+              <p className="label">
                 {node.type === "meeting" ? "Attendees" : "People"} ({current.people.length})
               </p>
               {current.people.length === 0 && <p style={s.empty}>Nobody linked yet.</p>}
@@ -437,7 +404,7 @@ export function DetailPanel({
 
             {current.groups.length > 0 && (
               <div style={s.section}>
-                <p style={s.sectionLabel}>{node.type === "meeting" ? "Group" : "Groups"}</p>
+                <p className="label">{node.type === "meeting" ? "Group" : "Groups"}</p>
                 <div style={s.chipRow}>
                   {current.groups.map((g) => (
                     <button
@@ -456,7 +423,7 @@ export function DetailPanel({
 
             {current.topics.length > 0 && (
               <div style={s.section}>
-                <p style={s.sectionLabel}>Topics</p>
+                <p className="label">Topics</p>
                 <div style={s.chipRow}>
                   {current.topics.map((t) => (
                     <button
@@ -474,17 +441,17 @@ export function DetailPanel({
             )}
 
             <div style={s.section}>
-              <p style={s.sectionLabel}>Connections ({data!.connections.length})</p>
+              <p className="label">Connections ({data!.connections.length})</p>
               {data!.connections.length === 0 && <p style={s.empty}>No direct connections.</p>}
               {data!.connections.map((c) => (
                 <div key={c.edgeId} style={s.connRow}>
                   <button type="button" style={s.connMain} onClick={() => onSelectNode(c.other.id)} title={c.notes}>
                     <span style={s.connType}>{connectionLabel(c)}</span> {c.other.name}
                   </button>
-                  <button type="button" style={s.connBtn} onClick={() => void changeConnection(c, "archive")}>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => void changeConnection(c, "archive")}>
                     Archive
                   </button>
-                  <button type="button" style={s.connBtn} onClick={() => void changeConnection(c, "delete")}>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => void changeConnection(c, "delete")}>
                     Delete
                   </button>
                 </div>
@@ -493,7 +460,8 @@ export function DetailPanel({
                 <>
                   <button
                     type="button"
-                    style={{ ...s.connBtn, marginTop: 4 }}
+                    className="btn btn-outline btn-sm"
+                    style={{ marginTop: 4 }}
                     aria-expanded={showArchived}
                     onClick={() => setShowArchived(!showArchived)}
                   >
@@ -505,10 +473,10 @@ export function DetailPanel({
                         <span style={{ ...s.connMain, cursor: "default" }} title={c.notes}>
                           <span style={s.connType}>{connectionLabel(c)}</span> {c.other.name}
                         </span>
-                        <button type="button" style={s.connBtn} onClick={() => void changeConnection(c, "restore")}>
+                        <button type="button" className="btn btn-outline btn-sm" onClick={() => void changeConnection(c, "restore")}>
                           Restore
                         </button>
-                        <button type="button" style={s.connBtn} onClick={() => void changeConnection(c, "delete")}>
+                        <button type="button" className="btn btn-outline btn-sm" onClick={() => void changeConnection(c, "delete")}>
                           Delete
                         </button>
                       </div>
@@ -516,7 +484,7 @@ export function DetailPanel({
                 </>
               )}
               {connError && (
-                <p role="alert" style={{ ...s.footerError, marginTop: 6 }}>
+                <p role="alert" className="error-text" style={{ marginTop: 6 }}>
                   {connError}
                 </p>
               )}
@@ -524,7 +492,7 @@ export function DetailPanel({
 
             {node.tags.length > 0 && (
               <div style={s.section}>
-                <p style={s.sectionLabel}>Tags</p>
+                <p className="label">Tags</p>
                 <div style={s.chipRow}>
                   {node.tags.map((tag) => (
                     <span key={tag} style={s.tag}>
@@ -536,7 +504,7 @@ export function DetailPanel({
             )}
 
             <div style={s.section}>
-              <p style={s.sectionLabel}>Files ({data!.attachments.length})</p>
+              <p className="label">Files ({data!.attachments.length})</p>
               <AttachmentsSection
                 token={userId}
                 nodeId={node.id}
@@ -549,11 +517,11 @@ export function DetailPanel({
           </div>
 
           <div style={s.footer}>
-            <button style={s.archiveBtn} onClick={handleArchive}>
+            <button className="btn btn-outline" style={{ width: "100%" }} onClick={handleArchive}>
               Archive node
             </button>
             {error && (
-              <p role="alert" style={s.footerError}>
+              <p role="alert" className="error-text" style={s.footerError}>
                 {error}
               </p>
             )}

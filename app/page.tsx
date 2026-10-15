@@ -34,9 +34,9 @@ export default function Home() {
   return (
     <main style={s.page}>
       <ThemeToggle extraStyle={{ position: "absolute", top: 16, right: 16 }} />
-      <div style={s.card}>
+      <div className="card" style={s.card}>
         <div>
-          <h1 style={s.h1}>Vertex</h1>
+          <h1 className="hero-title" style={s.h1}>Vertex</h1>
           <p style={s.tagline}>People graph MCP</p>
           <p style={s.p}>
             Your network as a graph. Nodes are people, groups, meetings, and topics. Edges are
@@ -55,7 +55,7 @@ export default function Home() {
                 keeps working.
               </div>
             )}
-            {error && <p style={s.errorText}>{error}</p>}
+            {error && <p className="error-text">{error}</p>}
             <AuthPanel
               claimToken={localToken}
               onSignedIn={(a) => {
@@ -70,7 +70,7 @@ export default function Home() {
 
         <p style={s.footer}>
           Built by{" "}
-          <a href="https://adhdesigns.dev" style={{ color: "var(--color-purple)", textDecoration: "none" }}>
+          <a href="https://adhdesigns.dev" style={{ textUnderlineOffset: 3 }}>
             ADHDesigns
           </a>
           .

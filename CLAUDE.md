@@ -41,7 +41,12 @@ npm run test:watch   # vitest watch
 
 ```
 app/
-  page.tsx                  # Landing page: sign up/in, MCP URL, rotate
+  page.tsx                  # Signed out: sign up/in. Signed in: <Dashboard>
+  Dashboard.tsx             # Quick actions, recent meetings, threads (lib/dashboard.ts)
+  settings/page.tsx         # MCP URL + copy, rotate, sign out
+  accountUi.ts              # Shared account-card styles + /api/auth helper
+  AppNav.tsx                # Dashboard · Graph · Settings nav + theme toggle
+  globals.css               # ADHDesigns 2026 tokens + shared classes (.btn, .chip, .input, .label, .card, .panel, .error-text)
   auth-panel.tsx            # Sign-up/sign-in form (with claim-existing-URL field)
   api/auth/route.ts         # me / signup / login / logout / rotate
   [userId]/mcp/route.ts     # GET (SSE) + POST + OPTIONS: JSON-RPC dispatcher
