@@ -45,8 +45,12 @@ app/
   auth-panel.tsx            # Sign-up/sign-in form (with claim-existing-URL field)
   api/auth/route.ts         # me / signup / login / logout / rotate
   [userId]/mcp/route.ts     # GET (SSE) + POST + OPTIONS: JSON-RPC dispatcher
-  [userId]/graph/           # Graph browser: GraphShell, GraphCanvas, Sidebar, DetailPanel, QuickCreate
-    actions.ts              # Server actions wrapping lib/ for the UI
+  Markdown.tsx              # Shared markdown renderer (react-markdown + GFM; no raw HTML). Use it for any user/AI text.
+  [userId]/graph/           # Graph browser: GraphShell, GraphCanvas, Sidebar, DetailPanel, QuickCreate, MeetingForm
+    AttachmentsSection.tsx  # Drop zone, upload (HEIC→JPEG in browser), status badges, in-app viewer modal
+    typeColors.ts           # Node type fill + readable text colors
+    actions.ts              # Server actions wrapping lib/ for the UI (getNodeDetailAction, logMeetingAction, …)
+  [userId]/attachments/route.ts  # Web upload: request + confirm (nodejs runtime, runs extraction)
 lib/
   types.ts                  # NodeType/EdgeType, per-type fields, VertexNode discriminated union
   redis.ts                  # Upstash Redis client singleton
@@ -128,7 +132,7 @@ Nodes get slugs (`"Art Trembanis"` → `art-trembanis`, then `-2`, `-3` on colli
 
 ### Tools
 
-All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`, `vtx_brief`, `vtx_who_knows`, `vtx_attachment_request_upload`, `vtx_attachment_confirm`, `vtx_attachment_get`, `vtx_attachment_link`, `vtx_attachment_delete`.
+All tools are prefixed `vtx_`. Current tools: `vtx_node_create`, `vtx_node_get`, `vtx_node_update`, `vtx_node_archive`, `vtx_node_search`, `vtx_orphans_list`, `vtx_edge_create`, `vtx_edge_delete`, `vtx_graph_query`, `vtx_graph_render`, `vtx_meeting_log`, `vtx_brief`, `vtx_who_knows`, `vtx_attachment_request_upload`, `vtx_attachment_confirm`, `vtx_attachment_get`, `vtx_attachment_link`, `vtx_attachment_delete`, `vtx_attachment_extract`, `vtx_attachment_set_text`.
 
 `vtx_node_search` matches name > description > meeting notes > attachment text and reports `matchedIn`. The UI's `searchNodes` wraps the same logic and returns plain nodes.
 
@@ -159,9 +163,10 @@ Extraction:
 - TXT/MD are used as-is. DOCX is unzipped (`fflate`) and its XML stripped. PDFs use the text layer via `unpdf`.
 - Photos, and PDFs with no text layer, get one transcription call to `EXTRACTION_MODEL` (`claude-haiku-5-5`, the app's single model constant). Effort is low, and the prompt asks for an exact transcription plus one non-text line.
 - Stored text is capped at 50k characters.
-- A failure sets `"failed"` plus `extractError`; the upload is kept, and `vtx_attachment_extract` retries. Text Coru provided is never overwritten.
+- Without `ANTHROPIC_API_KEY` (Nae's intentional setup: Coru transcribes), photos and scans get `"not_transcribed"`. That's a neutral state, not an error, and the UI shows it as such. Coru adds the text later with `vtx_attachment_set_text` (saved as `"provided"`).
+- A real failure sets `"failed"` plus `extractError`; the upload is kept, and `vtx_attachment_extract` retries. Extraction never overwrites text Coru provided.
 
-**Bundle rule:** only the MCP route may import `lib/extract.ts`. `lib/nodes.ts` imports `lib/attachments.ts`, so if attachments imported extract, the PDF/AI libraries would land in the graph page's edge bundle (it hit 0.99 MB gzipped, at Vercel's 1 MB Hobby edge limit).
+**Bundle rule:** only the MCP route and the nodejs `[userId]/attachments` route may import `lib/extract.ts`. The graph page also server-renders its client components, so `AttachmentsSection` (heic2any) loads via `next/dynamic` with `ssr: false`; keep it that way. `lib/nodes.ts` imports `lib/attachments.ts`, so if attachments imported extract, the PDF/AI libraries would land in the graph page's edge bundle (it hit 0.99 MB gzipped, at Vercel's 1 MB Hobby edge limit).
 
 Delete removes the R2 object first, then the record. Archiving a node leaves its files alone. Records never store or return a public URL; every read goes through a 1-hour presigned GET.
 
@@ -178,6 +183,8 @@ R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=vertex
 ANTHROPIC_API_KEY=      # photo/scan transcription only
 ```
+
+**R2 CORS** (needed for browser uploads from the graph page): the `vertex` bucket must allow `PUT`, `GET`, and `HEAD` from `https://vertex.adhdesigns.dev` and `http://localhost:3000`, with `Content-Type` as an allowed header. Without it, the UI reports "Couldn't send … to storage".
 
 Without the R2 vars, the attachment tools return a clear "not set up" error and everything else keeps working. Without `ANTHROPIC_API_KEY`, photo and scan extraction fails with a clear `extractError`; text, DOCX, and text-layer PDFs still work.
 

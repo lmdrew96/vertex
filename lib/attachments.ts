@@ -152,6 +152,22 @@ export const confirmUpload = async (
   return att;
 };
 
+/** Save text for an existing attachment (e.g. Coru transcribed it later). Replaces any earlier text. */
+export const setAttachmentText = async (
+  userId: string,
+  attachmentId: string,
+  text: string,
+): Promise<Attachment> => {
+  const att = await getAttachment(userId, attachmentId);
+  if (!att) throw new Error(`Attachment '${attachmentId}' not found.`);
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error("text is empty.");
+  const { extractError: _old, ...rest } = att;
+  const next: Attachment = { ...rest, extractedText: truncateExtracted(trimmed), extractStatus: "provided" };
+  await redis.set(attKey(userId, att.id), next);
+  return next;
+};
+
 // ── Read / link / delete ─────────────────────────────────────────────────────
 
 export const getAttachment = async (userId: string, attachmentId: string): Promise<Attachment | null> =>
@@ -177,6 +193,16 @@ export const listNodeAttachments = async (userId: string, nodeId: string): Promi
   const ids = (await redis.smembers(nodeAttsKey(userId, nodeId))) as string[];
   const atts = await Promise.all(ids.map((id) => getAttachment(userId, id)));
   return atts.filter((a): a is Attachment => a !== null).sort(byNewest);
+};
+
+/** What the web UI gets: everything but the storage key, plus a 1-hour view URL. */
+export type AttachmentView = Omit<Attachment, "r2Key"> & { url: string };
+
+export const listNodeAttachmentViews = async (userId: string, nodeId: string): Promise<AttachmentView[]> => {
+  const atts = await listNodeAttachments(userId, nodeId);
+  return Promise.all(
+    atts.map(async ({ r2Key, ...rest }) => ({ ...rest, url: await presignGetUrl(r2Key) })),
+  );
 };
 
 export const listAllAttachments = async (userId: string): Promise<Attachment[]> => {

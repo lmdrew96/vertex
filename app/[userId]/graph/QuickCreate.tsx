@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { EDGE_TYPES, NODE_TYPES, type Edge, type EdgeType, type NodeType, type VertexNode } from "@/lib/types";
 import { createEdgeAction, createNodeAction } from "./actions";
+import { MeetingForm } from "./MeetingForm";
+
+export type QuickTab = "closed" | "meeting" | "node" | "edge";
 
 const s = {
   bar: {
     borderTop: "1.5px solid var(--color-lavender)",
     background: "var(--color-white)",
   },
-  tabRow: { display: "flex", gap: 8, padding: "10px 18px" },
+  tabRow: { display: "flex", gap: 8, padding: "10px 18px", flexWrap: "wrap" as const },
   tabBtn: (active: boolean) => ({
     fontFamily: "var(--font-body)",
     fontSize: 13,
@@ -78,13 +81,13 @@ const s = {
 type QuickCreateProps = {
   userId: string;
   nodes: VertexNode[];
+  tab: QuickTab;
+  onTabChange: (tab: QuickTab) => void;
   onNodeCreated: (node: VertexNode) => void;
   onEdgeCreated: (toNodeId: string) => void;
 };
 
-export function QuickCreate({ userId, nodes, onNodeCreated, onEdgeCreated }: QuickCreateProps) {
-  const [tab, setTab] = useState<"closed" | "node" | "edge">("closed");
-
+export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCreated, onEdgeCreated }: QuickCreateProps) {
   const [nodeType, setNodeType] = useState<NodeType>("person");
   const [nodeName, setNodeName] = useState("");
   const [nodeDescription, setNodeDescription] = useState("");
@@ -176,6 +179,13 @@ export function QuickCreate({ userId, nodes, onNodeCreated, onEdgeCreated }: Qui
       <div style={s.tabRow}>
         <button
           type="button"
+          style={s.tabBtn(tab === "meeting")}
+          onClick={() => setTab(tab === "meeting" ? "closed" : "meeting")}
+        >
+          + Log a meeting
+        </button>
+        <button
+          type="button"
           style={s.tabBtn(tab === "node")}
           onClick={() => setTab(tab === "node" ? "closed" : "node")}
         >
@@ -189,6 +199,17 @@ export function QuickCreate({ userId, nodes, onNodeCreated, onEdgeCreated }: Qui
           + New Edge
         </button>
       </div>
+
+      {tab === "meeting" && (
+        <MeetingForm
+          userId={userId}
+          nodes={nodes}
+          onLogged={(meeting) => {
+            setTab("closed");
+            onNodeCreated(meeting);
+          }}
+        />
+      )}
 
       {tab === "node" && (
         <div style={s.form}>

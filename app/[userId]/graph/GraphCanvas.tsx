@@ -14,12 +14,7 @@ import type { Edge as VertexEdge, EdgeType, NodeType } from "@/lib/types";
 import type { Subgraph } from "@/lib/graph";
 import { graphQueryAction } from "./actions";
 
-const NODE_TYPE_COLOR: Record<NodeType, string> = {
-  person: "var(--color-gold)",
-  group: "var(--color-teal-deep)",
-  meeting: "var(--color-mint)",
-  topic: "var(--color-purple)",
-};
+import { NODE_TYPE_COLOR, NODE_TYPE_TEXT } from "./typeColors";
 
 const EDGE_TYPE_STYLE: Record<
   EdgeType,
@@ -38,6 +33,8 @@ const EDGE_TYPE_STYLE: Record<
 const RING_SPACING = 220;
 const NODE_WIDTH = 140;
 const NODE_HEIGHT = 64;
+const MEETING_WIDTH = 112;
+const MEETING_HEIGHT = 52;
 const NODE_LABEL_MAX_CHARS = 15;
 
 function truncateLabel(name: string): string {
@@ -92,25 +89,29 @@ function layout(subgraph: Subgraph): RFNode[] {
 
   return subgraph.nodes.map((node) => {
     const center = positions.get(node.id) ?? { x: 0, y: 0 };
+    // Meetings are events, not entities, so they draw smaller.
+    const small = node.type === "meeting";
+    const width = small ? MEETING_WIDTH : NODE_WIDTH;
+    const height = small ? MEETING_HEIGHT : NODE_HEIGHT;
     return {
       id: node.id,
-      position: { x: center.x - NODE_WIDTH / 2, y: center.y - NODE_HEIGHT / 2 },
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
+      position: { x: center.x - width / 2, y: center.y - height / 2 },
+      width,
+      height,
       data: { label: `${truncateLabel(node.name)}\n(${node.type})` },
       style: {
         background: NODE_TYPE_COLOR[node.type],
-        color: "var(--color-white)",
+        color: NODE_TYPE_TEXT[node.type],
         border: node.id === subgraph.root.id ? "3px solid var(--color-ink)" : "none",
         borderRadius: 10,
         fontFamily: "var(--font-body)",
-        fontSize: 12,
+        fontSize: small ? 11 : 12,
         fontWeight: 500,
         whiteSpace: "pre-line",
         textAlign: "center",
-        padding: 8,
-        width: NODE_WIDTH,
-        height: NODE_HEIGHT,
+        padding: small ? 6 : 8,
+        width,
+        height,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -162,6 +163,17 @@ const s = {
     color: "var(--color-teal-deep)",
     opacity: 0.6,
     fontSize: 14,
+  },
+  firstMeetingBtn: {
+    fontFamily: "var(--font-body)",
+    background: "var(--color-gold)",
+    color: "var(--color-ink)",
+    border: "none",
+    borderRadius: 9999,
+    padding: "11px 22px",
+    fontWeight: 600,
+    fontSize: 14,
+    cursor: "pointer",
   },
   toolbar: {
     position: "absolute" as const,
@@ -232,9 +244,18 @@ type GraphCanvasProps = {
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
   isMobile: boolean;
+  graphIsEmpty: boolean;
+  onLogFirstMeeting: () => void;
 };
 
-export function GraphCanvas({ userId, selectedNodeId, onSelectNode, isMobile }: GraphCanvasProps) {
+export function GraphCanvas({
+  userId,
+  selectedNodeId,
+  onSelectNode,
+  isMobile,
+  graphIsEmpty,
+  onLogFirstMeeting,
+}: GraphCanvasProps) {
   const [depth, setDepth] = useState(2);
   const [subgraph, setSubgraph] = useState<Subgraph | null>(null);
   const [popover, setPopover] = useState<{ edge: VertexEdge; x: number; y: number } | null>(null);
@@ -254,7 +275,18 @@ export function GraphCanvas({ userId, selectedNodeId, onSelectNode, isMobile }: 
   if (!selectedNodeId) {
     return (
       <div style={s.container}>
-        <div style={s.empty}>Select or create a node to explore its graph.</div>
+        {graphIsEmpty ? (
+          <div style={{ ...s.empty, flexDirection: "column", gap: 14, opacity: 1, padding: 24, textAlign: "center" }}>
+            <p style={{ margin: 0, maxWidth: 360, opacity: 0.8 }}>
+              Your network starts with a meeting: who was there, which group, what came up.
+            </p>
+            <button type="button" style={s.firstMeetingBtn} onClick={onLogFirstMeeting}>
+              Log your first meeting
+            </button>
+          </div>
+        ) : (
+          <div style={s.empty}>Select a node to explore its graph.</div>
+        )}
       </div>
     );
   }

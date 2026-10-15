@@ -68,11 +68,16 @@ const pdfText = async (bytes: Uint8Array): Promise<string> => {
   return text.trim();
 };
 
+/** Thrown when a file needs transcription but the server has no model key. Not a failure. */
+export class NotTranscribedError extends Error {
+  constructor() {
+    super("Not transcribed: this server has no ANTHROPIC_API_KEY. Add the text with vtx_attachment_set_text.");
+  }
+}
+
 /** One Claude call that transcribes an image or a scanned (no text layer) PDF. */
 const transcribe = async (bytes: Uint8Array, contentType: ImageType | "application/pdf"): Promise<string> => {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("Transcription isn't set up on the server yet (ANTHROPIC_API_KEY is missing).");
-  }
+  if (!process.env.ANTHROPIC_API_KEY) throw new NotTranscribedError();
   const data = toBase64(bytes);
   if (contentType !== "application/pdf" && data.length > MAX_IMAGE_BASE64_CHARS) {
     throw new Error(
@@ -142,8 +147,13 @@ const runExtraction = async (userId: string, att: Attachment): Promise<Attachmen
     const { extractError: _old, ...rest } = att;
     next = { ...rest, ...(text ? { extractedText: truncateExtracted(text) } : {}), extractStatus: "done" };
   } catch (e) {
-    console.error(`[vertex] extraction failed for attachment ${att.id}:`, e);
-    next = { ...att, extractStatus: "failed", extractError: describeExtractError(e) };
+    const { extractError: _old, ...rest } = att;
+    if (e instanceof NotTranscribedError) {
+      next = { ...rest, extractStatus: "not_transcribed" };
+    } else {
+      console.error(`[vertex] extraction failed for attachment ${att.id}:`, e);
+      next = { ...att, extractStatus: "failed", extractError: describeExtractError(e) };
+    }
   }
   await redis.set(attKey(userId, att.id), next);
   return next;

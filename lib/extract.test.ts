@@ -24,7 +24,7 @@ vi.mock("@anthropic-ai/sdk", () => {
   return { default: Anthropic };
 });
 
-import { docxText, EXTRACTION_MODEL, extractFileText } from "./extract";
+import { docxText, EXTRACTION_MODEL, extractFileText, NotTranscribedError } from "./extract";
 
 beforeEach(() => {
   api.calls.length = 0;
@@ -118,8 +118,14 @@ describe("images", () => {
     await expect(extractFileText(new Uint8Array([1]), "image/jpeg")).rejects.toThrow(/declined.*cyber/);
   });
 
-  it("fails clearly without an API key", async () => {
+  it("signals 'not transcribed' (not a failure) without an API key", async () => {
     delete process.env.ANTHROPIC_API_KEY;
-    await expect(extractFileText(new Uint8Array([1]), "image/webp")).rejects.toThrow(/ANTHROPIC_API_KEY/);
+    await expect(extractFileText(new Uint8Array([1]), "image/webp")).rejects.toBeInstanceOf(NotTranscribedError);
+    expect(api.calls).toHaveLength(0);
+  });
+
+  it("still reads text-layer PDFs without an API key", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    expect(await extractFileText(makePdf("Agenda"), "application/pdf")).toContain("Agenda");
   });
 });

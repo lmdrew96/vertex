@@ -1,6 +1,6 @@
 {
   "name": "vertex-mcp",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -16,9 +16,12 @@
     "@xyflow/react": "^12.11.2",
     "aws4fetch": "^1.0.20",
     "fflate": "^0.8.3",
+    "heic2any": "^0.0.4",
     "next": "16.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "unpdf": "^1.8.1"
   },
   "devDependencies": {

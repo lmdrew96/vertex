@@ -6,7 +6,7 @@ import { getAllTagsAction, getOrphanIdsAction, searchNodesAction } from "./actio
 import { Sidebar } from "./Sidebar";
 import { GraphCanvas } from "./GraphCanvas";
 import { DetailPanel } from "./DetailPanel";
-import { QuickCreate } from "./QuickCreate";
+import { QuickCreate, type QuickTab } from "./QuickCreate";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -38,6 +38,7 @@ export function GraphShell({ userId, initialNodes, allTags, orphanIds }: GraphSh
   const [tags, setTags] = useState(allTags);
   const [orphans, setOrphans] = useState(orphanIds);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [quickTab, setQuickTab] = useState<QuickTab>("closed");
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -99,10 +100,14 @@ export function GraphShell({ userId, initialNodes, allTags, orphanIds }: GraphSh
           selectedNodeId={selectedNodeId}
           onSelectNode={setSelectedNodeId}
           isMobile={isMobile}
+          graphIsEmpty={nodes.length === 0}
+          onLogFirstMeeting={() => setQuickTab("meeting")}
         />
         <QuickCreate
           userId={userId}
           nodes={nodes}
+          tab={quickTab}
+          onTabChange={setQuickTab}
           onNodeCreated={handleNodeCreated}
           onEdgeCreated={handleEdgeCreated}
         />

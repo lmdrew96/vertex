@@ -113,7 +113,9 @@ export type EdgeCreateInput = {
 
 // ── Attachments ──────────────────────────────────────────────────────────────
 
-export type ExtractStatus = "pending" | "done" | "failed" | "provided";
+// "not_transcribed": a photo or scan that needs a model to read it, on a server with no
+// ANTHROPIC_API_KEY. Intentional (Coru adds the text), not an error.
+export type ExtractStatus = "pending" | "done" | "failed" | "provided" | "not_transcribed";
 
 export interface Attachment {
   id: string; // uuid

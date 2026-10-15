@@ -83,6 +83,7 @@ import {
   deleteAttachment,
   getAttachment,
   linkAttachment,
+  setAttachmentText,
   listNodeAttachments,
   requestUpload,
   safeFilename,
@@ -186,6 +187,28 @@ describe("confirmUpload", () => {
     const retried = await extractAttachment(USER, att.id);
     expect(retried.extractStatus).toBe("done");
     expect(retried).not.toHaveProperty("extractError");
+  });
+
+  it("marks a photo 'not_transcribed' with no error when there's no model key", async () => {
+    const art = await createNode(USER, { type: "person", name: "Art" });
+    delete process.env.ANTHROPIC_API_KEY;
+    const png = { filename: "notes.png", contentType: "image/png", size: 40 };
+    const req = await requestUpload(USER, { nodeIds: [art.id], ...png });
+    const { r2Key } = kv.get(pendingUploadKey(USER, req.attachmentId)) as { r2Key: string };
+    r2.objects.set(r2Key, { contentType: png.contentType, size: png.size });
+    const att = await confirmAndExtract(USER, req.attachmentId);
+    expect(att.extractStatus).toBe("not_transcribed");
+    expect(att).not.toHaveProperty("extractError");
+  });
+
+  it("lets Coru add or replace text later", async () => {
+    const art = await createNode(USER, { type: "person", name: "Art" });
+    ex.fail = "timeout";
+    const att = await uploadAndExtract([art.id]);
+    const updated = await setAttachmentText(USER, att.id, "  Call Dana re: survey  ");
+    expect(updated).toMatchObject({ extractStatus: "provided", extractedText: "Call Dana re: survey" });
+    expect(updated).not.toHaveProperty("extractError");
+    await expect(setAttachmentText(USER, att.id, "   ")).rejects.toThrow(/empty/);
   });
 
   it("never re-extracts text Coru provided", async () => {

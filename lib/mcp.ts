@@ -7,6 +7,7 @@ import {
   linkAttachment,
   listNodeAttachments,
   requestUpload,
+  setAttachmentText,
   summarize,
 } from "./attachments";
 import { brief, whoKnows } from "./brief";
@@ -329,7 +330,7 @@ export const TOOLS = [
   {
     name: "vtx_attachment_confirm",
     description:
-      "Step 3 of attaching a file, after the bytes are PUT to upload_url. Checks the stored file's real type and size, then saves the attachment. If you've already read the file in chat, pass its full text as extracted_text (handwriting transcribed, nothing summarized). That's saved as-is, with no server-side cost. Otherwise the server extracts the text now (PDF text layer, DOCX, TXT/MD, or a Claude transcription for photos and scanned PDFs). If that fails, the upload still succeeds with extractStatus \"failed\" and an extractError; retry with vtx_attachment_extract. Confirming twice is harmless.",
+      "Step 3 of attaching a file, after the bytes are PUT to upload_url. Checks the stored file's real type and size, then saves the attachment. If you've already read the file in chat, pass its full text as extracted_text (handwriting transcribed, nothing summarized). That's saved as-is, with no server-side cost. Otherwise the server extracts the text now (PDF text layer, DOCX, TXT/MD, or a Claude transcription for photos and scanned PDFs). Photos and scans come back \"not_transcribed\" when the server has no model key; that's expected, so read the file yourself and send the text with vtx_attachment_set_text. A real failure still saves the upload, with extractStatus \"failed\" and an extractError; retry with vtx_attachment_extract. Confirming twice is harmless.",
     inputSchema: {
       type: "object",
       properties: {
@@ -350,6 +351,19 @@ export const TOOLS = [
       type: "object",
       properties: { attachment_id: { type: "string" } },
       required: ["attachment_id"],
+    },
+  },
+  {
+    name: "vtx_attachment_set_text",
+    description:
+      "Save the text of an existing attachment, e.g. after you read a photo or scan that shows extractStatus \"not_transcribed\". Transcribe exactly (handwriting included, nothing summarized) and pass the full text. It's stored as \"provided\" (up to 50k characters) and replaces any earlier text, so this also fixes a bad transcription.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        attachment_id: { type: "string" },
+        text: { type: "string", description: "The file's full text." },
+      },
+      required: ["attachment_id", "text"],
     },
   },
   {
@@ -389,7 +403,7 @@ export const TOOLS = [
 
 export const SERVER_INFO = {
   name: "vertex-mcp",
-  version: "1.6.0",
+  version: "1.7.0",
   protocolVersion: "2024-11-05",
 };
 
@@ -690,6 +704,7 @@ export const dispatchTool = async (
     case "vtx_attachment_request_upload":
     case "vtx_attachment_confirm":
     case "vtx_attachment_extract":
+    case "vtx_attachment_set_text":
     case "vtx_attachment_get":
     case "vtx_attachment_link":
     case "vtx_attachment_delete":
@@ -737,6 +752,12 @@ const attachmentTool = async (name: string, args: ToolArgs, userId: string): Pro
       }
       case "vtx_attachment_extract": {
         const att = await extractAttachment(userId, attachmentId!);
+        return textContent({ attachment: summarize(att) });
+      }
+      case "vtx_attachment_set_text": {
+        const text = asString(args.text);
+        if (!text) throw new ToolError(-32602, "vtx_attachment_set_text requires text");
+        const att = await setAttachmentText(userId, attachmentId!, text);
         return textContent({ attachment: summarize(att) });
       }
       case "vtx_attachment_get": {

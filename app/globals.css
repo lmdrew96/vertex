@@ -27,3 +27,20 @@ body {
   font-size: 1rem;
   line-height: 1.56;
 }
+
+/* ── Markdown (app/Markdown.tsx) ─────────────────────────────────────────── */
+.md { font-family: var(--font-body); font-size: 14px; line-height: 1.6; color: var(--color-ink); overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p, .md ul, .md ol, .md blockquote, .md pre, .md table { margin: 0 0 10px; }
+.md h1, .md h2, .md h3, .md h4 { font-family: var(--font-display); font-weight: 600; margin: 14px 0 6px; line-height: 1.25; }
+.md h1 { font-size: 20px; } .md h2 { font-size: 18px; } .md h3, .md h4 { font-size: 16px; }
+.md ul, .md ol { padding-left: 22px; }
+.md li > ul, .md li > ol { margin: 2px 0; }
+.md a { color: var(--color-teal-deep); text-decoration: underline; }
+.md code { font-family: var(--font-mono); font-size: 12.5px; background: var(--color-surface); border: 1px solid var(--color-lavender); border-radius: 4px; padding: 1px 4px; }
+.md pre { background: var(--color-surface); border: 1px solid var(--color-lavender); border-radius: 8px; padding: 10px 12px; overflow-x: auto; }
+.md pre code { background: none; border: none; padding: 0; }
+.md blockquote { border-left: 3px solid var(--color-lavender); padding-left: 12px; color: var(--color-teal-deep); }
+.md table { border-collapse: collapse; display: block; overflow-x: auto; }
+.md th, .md td { border: 1px solid var(--color-lavender); padding: 4px 8px; text-align: left; }

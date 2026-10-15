@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { NODE_TYPES, type NodeType, type VertexNode } from "@/lib/types";
 import { searchNodesAction } from "./actions";
+import { NODE_TYPE_COLOR, NODE_TYPE_TEXT } from "./typeColors";
 
 
 const s = {
@@ -41,19 +42,6 @@ const s = {
     width: "100%",
     boxSizing: "border-box" as const,
   },
-  select: {
-    fontFamily: "var(--font-body)",
-    background: "var(--color-surface)",
-    border: "1.5px solid var(--color-lavender)",
-    borderRadius: 8,
-    color: "var(--color-ink)",
-    fontSize: 13,
-    padding: "8px 10px",
-    outline: "none",
-    width: "100%",
-    marginTop: 10,
-    boxSizing: "border-box" as const,
-  },
   label: {
     fontFamily: "var(--font-body)",
     fontSize: 11,
@@ -80,6 +68,28 @@ const s = {
     background: active ? "var(--color-teal-deep)" : "transparent",
     color: active ? "var(--color-white)" : "var(--color-ink)",
     cursor: "pointer",
+  }),
+  typeChip: (active: boolean, color: string, text = "var(--color-white)") => ({
+    fontFamily: "var(--font-body)",
+    fontSize: 12,
+    fontWeight: 500,
+    padding: "5px 10px",
+    borderRadius: 9999,
+    border: `1.5px solid ${active ? color : "var(--color-lavender)"}`,
+    background: active ? color : "transparent",
+    color: active ? text : "var(--color-ink)",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  }),
+  dot: (color: string) => ({
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    background: color,
+    display: "inline-block",
+    flexShrink: 0,
   }),
   orphanRow: {
     display: "flex",
@@ -189,18 +199,28 @@ export function Sidebar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <select
-          style={s.select}
-          value={type}
-          onChange={(e) => setType(e.target.value as NodeType | "")}
-        >
-          <option value="">All types</option>
+        <div style={{ ...s.chipRow, marginTop: 10 }} role="group" aria-label="Filter by type">
+          <button
+            type="button"
+            style={s.typeChip(type === "", "var(--color-ink)")}
+            aria-pressed={type === ""}
+            onClick={() => setType("")}
+          >
+            All
+          </button>
           {NODE_TYPES.map((t) => (
-            <option key={t} value={t}>
+            <button
+              key={t}
+              type="button"
+              style={s.typeChip(type === t, NODE_TYPE_COLOR[t], NODE_TYPE_TEXT[t])}
+              aria-pressed={type === t}
+              onClick={() => setType(type === t ? "" : t)}
+            >
+              {type !== t && <span style={s.dot(NODE_TYPE_COLOR[t])} />}
               {t}
-            </option>
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
       {allTags.length > 0 && (
@@ -259,7 +279,10 @@ export function Sidebar({
               onClick={() => onSelectNode(n.id)}
             >
               <span style={s.itemName}>{n.name}</span>
-              <span style={s.itemMeta}>{n.type}</span>
+              <span style={{ ...s.itemMeta, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={s.dot(NODE_TYPE_COLOR[n.type])} />
+                {n.type === "meeting" ? n.fields.date : n.type}
+              </span>
             </div>
           ))
         )}
