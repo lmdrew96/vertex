@@ -137,14 +137,18 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
     const base = { name: nodeName.trim(), description: nodeDescription.trim(), tags };
 
     try {
-      const node = await createNodeAction(
+      const result = await createNodeAction(
         userId,
         nodeType === "meeting"
           ? { ...base, type: "meeting", fields: { date: meetingDate } }
           : { ...base, type: nodeType },
       );
+      if (!result.ok) {
+        setNodeError(result.error);
+        return;
+      }
       resetNodeForm();
-      onNodeCreated(node);
+      onNodeCreated(result.value);
     } catch (e) {
       setNodeError(e instanceof Error ? e.message : "Failed to create node.");
     }

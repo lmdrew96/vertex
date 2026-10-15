@@ -9,7 +9,7 @@ import { archiveNode, getAllTags, getOrphanIds, searchNodes, type SearchOpts } f
 import { createEdge, deleteEdge } from "@/lib/edges";
 import { createNode } from "@/lib/nodes";
 import { graphQuery } from "@/lib/graph";
-import type { Edge, EdgeCreateInput, EdgeType, NodeCreateInput } from "@/lib/types";
+import type { Edge, EdgeCreateInput, EdgeType, NodeCreateInput, VertexNode } from "@/lib/types";
 
 // Every action receives the URL token and resolves it to the graph namespace server-side,
 // so a rotated-out token can't read or write through the UI either.
@@ -38,14 +38,6 @@ export async function graphQueryAction(
   return graphQuery(await graphFor(token), opts);
 }
 
-export async function createNodeAction(token: string, input: NodeCreateInput) {
-  return createNode(await graphFor(token), input);
-}
-
-export async function archiveNodeAction(token: string, nodeId: string) {
-  return archiveNode(await graphFor(token), nodeId);
-}
-
 // Production hides a thrown server-action error behind a bare 500, so expected failures
 // (like a wrong edge pair) come back as a message the form can show.
 export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -63,8 +55,22 @@ export async function createEdgeAction(token: string, input: EdgeCreateInput): P
   return asResult(async () => (await createEdge(await graphFor(token), input)).edge);
 }
 
-export async function deleteEdgeAction(token: string, edgeId: string) {
-  return deleteEdge(await graphFor(token), edgeId);
+export async function deleteEdgeAction(token: string, edgeId: string): Promise<ActionResult<null>> {
+  return asResult(async () => {
+    if (!(await deleteEdge(await graphFor(token), edgeId))) throw new Error("That connection is already gone.");
+    return null;
+  });
+}
+
+export async function createNodeAction(token: string, input: NodeCreateInput): Promise<ActionResult<VertexNode>> {
+  return asResult(async () => createNode(await graphFor(token), input));
+}
+
+export async function archiveNodeAction(token: string, nodeId: string): Promise<ActionResult<null>> {
+  return asResult(async () => {
+    if (!(await archiveNode(await graphFor(token), nodeId))) throw new Error("That node no longer exists.");
+    return null;
+  });
 }
 
 // Removes the file from storage and from every node it hangs on.
@@ -99,6 +105,9 @@ export async function getNodeDetailAction(token: string, nodeId: string): Promis
   }
 }
 
-export async function logMeetingAction(token: string, input: MeetingLogInput): Promise<MeetingLogResult> {
-  return logMeeting(await graphFor(token), input);
+export async function logMeetingAction(
+  token: string,
+  input: MeetingLogInput,
+): Promise<ActionResult<MeetingLogResult>> {
+  return asResult(async () => logMeeting(await graphFor(token), input));
 }

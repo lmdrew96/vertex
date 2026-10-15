@@ -210,12 +210,16 @@ export function MeetingForm({
         notes: notes.trim() || undefined,
         confirmNew,
       });
-      if (result.status === "needs_choice") {
-        setChoices(result.choices);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      if (result.value.status === "needs_choice") {
+        setChoices(result.value.choices);
         return;
       }
       reset();
-      onLogged(result.meeting);
+      onLogged(result.value.meeting);
     } catch (e) {
       setError(e instanceof Error ? e.message : `Couldn't log the ${kind}.`);
     } finally {

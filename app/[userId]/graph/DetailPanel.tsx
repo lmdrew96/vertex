@@ -171,6 +171,7 @@ const s = {
     cursor: "pointer",
     width: "100%",
   },
+  footerError: { fontFamily: "var(--font-body)", fontSize: 12.5, color: "var(--color-danger)", margin: "10px 0 0" },
   loading: { fontFamily: "var(--font-body)", fontSize: 13, color: "var(--color-teal-deep)", padding: 22 },
 };
 
@@ -219,8 +220,16 @@ export function DetailPanel({ userId, nodeId, onSelectNode, onArchived, onClose,
     if (!data) return;
     const node = data.brief.node;
     if (!window.confirm(`Archive "${node.name}"? This can't be undone from the UI.`)) return;
-    await archiveNodeAction(userId, node.id);
-    onArchived(node.id);
+    try {
+      const result = await archiveNodeAction(userId, node.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      onArchived(node.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't archive this node.");
+    }
   };
 
   // Driven by nodeId (not data) so the layout reserves space in the same
@@ -421,6 +430,11 @@ export function DetailPanel({ userId, nodeId, onSelectNode, onArchived, onClose,
             <button style={s.archiveBtn} onClick={handleArchive}>
               Archive node
             </button>
+            {error && (
+              <p role="alert" style={s.footerError}>
+                {error}
+              </p>
+            )}
           </div>
         </div>
       )}
