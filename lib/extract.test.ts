@@ -78,7 +78,24 @@ describe("docxText", () => {
     const bytes = makeDocx(
       "<w:p><w:r><w:t>Agenda &amp; notes</w:t></w:r></w:p><w:p><w:r><w:t>1.</w:t><w:tab/><w:t>Mentorship</w:t></w:r></w:p>",
     );
-    expect(docxText(bytes)).toBe("Agenda & notes\n1.\tMentorship");
+    expect(docxText(bytes)).toBe("Agenda & notes\n\n1.\tMentorship");
+  });
+
+  it("keeps headings and nested bullet lists as markdown", () => {
+    const bullet = (text: string, level = 0) =>
+      `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="${level}"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`;
+    const bytes = makeDocx(
+      '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Workshop</w:t></w:r></w:p>' +
+        "<w:p><w:r><w:t>AAP Experience</w:t></w:r></w:p>" +
+        bullet("Mentors") +
+        bullet("Weekly check-ins", 1) +
+        "<w:p/>" +
+        "<w:p><w:r><w:t>Academic</w:t></w:r></w:p>" +
+        bullet("Advising"),
+    );
+    expect(docxText(bytes)).toBe(
+      "# Workshop\n\nAAP Experience\n\n- Mentors\n  - Weekly check-ins\n\nAcademic\n\n- Advising",
+    );
   });
 
   it("fails clearly on a zip that isn't a Word document", () => {

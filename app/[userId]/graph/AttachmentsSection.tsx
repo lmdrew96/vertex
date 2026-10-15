@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { AttachmentView } from "@/lib/attachments";
 import type { ExtractStatus } from "@/lib/types";
 import { Markdown } from "../../Markdown";
@@ -288,8 +289,12 @@ function AttachmentViewer({
 
   const isImage = att.contentType.startsWith("image/");
   const isPdf = att.contentType === "application/pdf";
+  // Photos and PDFs show the file itself; their extracted text is one click away.
+  const [showText, setShowText] = useState(false);
+  const canToggle = (isImage || isPdf) && Boolean(att.extractedText);
 
-  return (
+  // Portaled to <body>: the detail panel's transform would otherwise trap this fixed overlay inside it.
+  return createPortal(
     <div style={v.backdrop} onClick={onClose}>
       <div
         role="dialog"
@@ -300,6 +305,11 @@ function AttachmentViewer({
       >
         <div style={v.header}>
           <p style={v.title}>{att.filename}</p>
+          {canToggle && (
+            <button type="button" style={{ ...s.textToggle, fontSize: 12.5 }} onClick={() => setShowText((x) => !x)}>
+              {showText ? "File" : "Text"}
+            </button>
+          )}
           <a href={att.url} download={att.filename} style={v.link}>
             Download
           </a>
@@ -308,7 +318,11 @@ function AttachmentViewer({
           </button>
         </div>
         <div style={v.body}>
-          {isImage ? (
+          {showText && att.extractedText ? (
+            <div style={v.text}>
+              <Markdown>{att.extractedText}</Markdown>
+            </div>
+          ) : isImage ? (
             // eslint-disable-next-line @next/next/no-img-element -- presigned R2 URL, not optimizable
             <img src={att.url} alt={att.caption ?? att.filename} style={v.img} />
           ) : isPdf ? (
@@ -324,7 +338,8 @@ function AttachmentViewer({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "vertex-mcp",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -27,6 +27,7 @@
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^19",
+    "@types/react-dom": "^19.3.0",
     "typescript": "^5",
     "vitest": "^2.1.0"
   }

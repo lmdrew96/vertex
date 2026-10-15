@@ -48,18 +48,39 @@ const decodeEntities = (s: string): string =>
     .replace(/&#x([0-9a-fA-F]+);/g, (_, n: string) => String.fromCodePoint(parseInt(n, 16)))
     .replace(/&amp;/g, "&");
 
-/** DOCX is a zip; the body text lives in word/document.xml. Paragraphs → lines, tabs kept. */
+/**
+ * DOCX is a zip; the body text lives in word/document.xml. Each paragraph becomes a markdown
+ * block so the viewer keeps the structure: Heading styles → "#", list paragraphs (numPr or a
+ * List* style) → "- " indented by level, everything else → its own paragraph.
+ */
 export const docxText = (bytes: Uint8Array): string => {
   const files = unzipSync(bytes, { filter: (f) => f.name === "word/document.xml" });
   const xml = files["word/document.xml"];
   if (!xml) throw new Error("This .docx has no word/document.xml, so it may be damaged.");
-  const text = new TextDecoder()
-    .decode(xml)
-    .replace(/<w:tab\/>/g, "\t")
-    .replace(/<w:(br|cr)\/>/g, "\n")
-    .replace(/<\/w:p>/g, "\n")
-    .replace(/<[^>]+>/g, "");
-  return decodeEntities(text).replace(/\n{3,}/g, "\n\n").trim();
+  const blocks: { text: string; list: boolean }[] = [];
+  for (const [para] of new TextDecoder().decode(xml).matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)) {
+    const text = decodeEntities(
+      para
+        .replace(/<w:tab\/>/g, "\t")
+        .replace(/<w:(br|cr)\/>/g, "  \n")
+        .replace(/<[^>]+>/g, ""),
+    ).trim();
+    if (!text) continue;
+    const style = para.match(/<w:pStyle w:val="([^"]+)"/)?.[1] ?? "";
+    const heading = style.match(/^Heading(\d)$/i);
+    if (heading) {
+      blocks.push({ text: `${"#".repeat(Math.min(Number(heading[1]), 6))} ${text}`, list: false });
+    } else if (para.includes("<w:numPr>") || /^List/i.test(style)) {
+      const level = Number(para.match(/<w:ilvl w:val="(\d+)"/)?.[1] ?? 0);
+      blocks.push({ text: `${"  ".repeat(level)}- ${text}`, list: true });
+    } else {
+      blocks.push({ text, list: false });
+    }
+  }
+  // List items stay on consecutive lines (one list); every other block gets a blank line.
+  return blocks
+    .map((b, i) => (i === 0 ? "" : b.list && blocks[i - 1].list ? "\n" : "\n\n") + b.text)
+    .join("");
 };
 
 const pdfText = async (bytes: Uint8Array): Promise<string> => {
