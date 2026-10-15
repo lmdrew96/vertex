@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AttachmentView } from "@/lib/attachments";
 import type { ExtractStatus } from "@/lib/types";
 import { Markdown } from "../../Markdown";
+import { deleteAttachmentAction } from "./actions";
 
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -180,6 +181,17 @@ const s = {
     textDecoration: "underline",
     cursor: "pointer",
   },
+  deleteBtn: {
+    fontFamily: "var(--font-body)",
+    fontSize: 11.5,
+    background: "none",
+    border: "none",
+    padding: 0,
+    marginLeft: "auto",
+    color: "#c0392b",
+    cursor: "pointer",
+  },
+  confirmText: { fontFamily: "var(--font-body)", fontSize: 11.5, color: "#c0392b", marginLeft: "auto" },
   textBox: {
     marginTop: 8,
     padding: "10px 12px",
@@ -340,6 +352,21 @@ export function AttachmentsSection({
   const [openText, setOpenText] = useState<Set<string>>(new Set());
   const [viewing, setViewing] = useState<AttachmentView | null>(null);
   const closeViewer = useCallback(() => setViewing(null), []);
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const remove = async (att: AttachmentView) => {
+    setError("");
+    setDeleting(att.id);
+    try {
+      await deleteAttachmentAction(token, att.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `Couldn't delete ${att.filename}.`);
+    }
+    setDeleting(null);
+    setConfirmingDelete(null);
+    onChanged();
+  };
 
   const upload = async (files: FileList | File[]) => {
     const list = Array.from(files);
@@ -438,6 +465,28 @@ export function AttachmentsSection({
                   {att.extractedText && (
                     <button type="button" style={s.textToggle} onClick={() => toggleText(att.id)}>
                       {textOpen ? "Hide text" : "Text"}
+                    </button>
+                  )}
+                  {deleting === att.id ? (
+                    <span style={s.confirmText}>Deleting…</span>
+                  ) : confirmingDelete === att.id ? (
+                    <span style={s.confirmText}>
+                      {att.nodeIds.length > 1 ? `Delete from all ${att.nodeIds.length} nodes? ` : "Delete for good? "}
+                      <button type="button" style={{ ...s.textToggle, color: "#c0392b" }} onClick={() => void remove(att)}>
+                        Yes
+                      </button>{" "}
+                      <button type="button" style={s.textToggle} onClick={() => setConfirmingDelete(null)}>
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      style={s.deleteBtn}
+                      onClick={() => setConfirmingDelete(att.id)}
+                      aria-label={`Delete ${att.filename}`}
+                    >
+                      Delete
                     </button>
                   )}
                 </div>

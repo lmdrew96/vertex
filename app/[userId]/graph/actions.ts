@@ -1,6 +1,6 @@
 "use server";
 
-import { listNodeAttachmentViews, type AttachmentView } from "@/lib/attachments";
+import { deleteAttachment, listNodeAttachmentViews, type AttachmentView } from "@/lib/attachments";
 import { resolveGraphId } from "@/lib/auth";
 import { brief, type BriefResult } from "@/lib/brief";
 import { logMeeting, type MeetingLogInput, type MeetingLogResult } from "@/lib/meetings";
@@ -52,6 +52,12 @@ export async function createEdgeAction(token: string, input: EdgeCreateInput) {
 
 export async function deleteEdgeAction(token: string, edgeId: string) {
   return deleteEdge(await graphFor(token), edgeId);
+}
+
+// Removes the file from storage and from every node it hangs on.
+export async function deleteAttachmentAction(token: string, attachmentId: string): Promise<void> {
+  const att = await deleteAttachment(await graphFor(token), attachmentId);
+  if (!att) throw new Error("That file is already gone.");
 }
 
 export type NodeDetail = {
