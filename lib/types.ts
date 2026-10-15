@@ -24,6 +24,28 @@ export const EDGE_TYPES: EdgeType[] = [
   "connects_to",
 ];
 
+// ── Pair rules (shared by the server and the edge form) ─────────────────────
+
+// Allowed from → to node types per edge type. `null` means any pair (connects_to).
+export const EDGE_RULES: Record<EdgeType, { from: NodeType[]; to: NodeType[] } | null> = {
+  member_of: { from: ["person"], to: ["group"] },
+  attended: { from: ["person"], to: ["meeting"] },
+  held_by: { from: ["meeting"], to: ["group"] },
+  about: { from: ["meeting"], to: ["topic"] },
+  involved_in: { from: ["person", "group"], to: ["topic"] },
+  can_help_with: { from: ["person"], to: ["topic"] },
+  introduced: { from: ["person"], to: ["person"] },
+  connects_to: null,
+};
+
+// Edge types whose rule accepts this from → to pair.
+export const edgeTypesFor = (from: NodeType, to: NodeType): EdgeType[] =>
+  EDGE_TYPES.filter((t) => {
+    const rule = EDGE_RULES[t];
+    return !rule || (rule.from.includes(from) && rule.to.includes(to));
+  });
+
+
 // ── Per-type fields ──────────────────────────────────────────────────────────
 
 export type GroupKind = "council" | "club" | "office" | "class" | "program";

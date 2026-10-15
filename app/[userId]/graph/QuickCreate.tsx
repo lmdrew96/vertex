@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { EDGE_TYPES, NODE_TYPES, type Edge, type EdgeType, type NodeType, type VertexNode } from "@/lib/types";
+import { EDGE_TYPES, NODE_TYPES, edgeTypesFor, type EdgeType, type NodeType, type VertexNode } from "@/lib/types";
 import { createEdgeAction, createNodeAction } from "./actions";
 import { MeetingForm } from "./MeetingForm";
 
@@ -143,9 +143,14 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
     }
   };
 
+  // Once both ends are real nodes, only offer the edge types that fit that pair
+  // (connects_to always does), so the server never has to reject the choice.
+  const fromNode = nodes.find((n) => n.name.toLowerCase() === fromName.trim().toLowerCase());
+  const toNode = nodes.find((n) => n.name.toLowerCase() === toName.trim().toLowerCase());
+  const allowedTypes = fromNode && toNode ? edgeTypesFor(fromNode.type, toNode.type) : EDGE_TYPES;
+  const chosenType = allowedTypes.includes(edgeType) ? edgeType : allowedTypes[0];
+
   const submitEdge = async () => {
-    const fromNode = nodes.find((n) => n.name.toLowerCase() === fromName.trim().toLowerCase());
-    const toNode = nodes.find((n) => n.name.toLowerCase() === toName.trim().toLowerCase());
     if (!fromNode) {
       setEdgeError(`No node named "${fromName}" — pick one from the list.`);
       return;
@@ -160,15 +165,19 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
     }
 
     try {
-      const { edge } = await createEdgeAction(userId, {
+      const result = await createEdgeAction(userId, {
         from: fromNode.id,
         to: toNode.id,
-        type: edgeType,
+        type: chosenType,
         evidence: evidence.trim() || undefined,
         notes: notes.trim() || undefined,
       });
+      if (!result.ok) {
+        setEdgeError(result.error);
+        return;
+      }
       resetEdgeForm();
-      onEdgeCreated((edge as Edge).to);
+      onEdgeCreated(result.value.to);
     } catch (e) {
       setEdgeError(e instanceof Error ? e.message : "Failed to create edge.");
     }
@@ -277,8 +286,13 @@ export function QuickCreate({ userId, nodes, tab, onTabChange: setTab, onNodeCre
               onChange={(e) => setToName(e.target.value)}
             />
           </div>
-          <select style={s.input} value={edgeType} onChange={(e) => setEdgeType(e.target.value as EdgeType)}>
-            {EDGE_TYPES.map((t) => (
+          <select
+            style={s.input}
+            value={chosenType}
+            onChange={(e) => setEdgeType(e.target.value as EdgeType)}
+            aria-label="Edge type"
+          >
+            {allowedTypes.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>

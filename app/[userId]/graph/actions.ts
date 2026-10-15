@@ -9,7 +9,7 @@ import { archiveNode, getAllTags, getOrphanIds, searchNodes, type SearchOpts } f
 import { createEdge, deleteEdge } from "@/lib/edges";
 import { createNode } from "@/lib/nodes";
 import { graphQuery } from "@/lib/graph";
-import type { EdgeCreateInput, EdgeType, NodeCreateInput } from "@/lib/types";
+import type { Edge, EdgeCreateInput, EdgeType, NodeCreateInput } from "@/lib/types";
 
 // Every action receives the URL token and resolves it to the graph namespace server-side,
 // so a rotated-out token can't read or write through the UI either.
@@ -46,8 +46,21 @@ export async function archiveNodeAction(token: string, nodeId: string) {
   return archiveNode(await graphFor(token), nodeId);
 }
 
-export async function createEdgeAction(token: string, input: EdgeCreateInput) {
-  return createEdge(await graphFor(token), input);
+// Production hides a thrown server-action error behind a bare 500, so expected failures
+// (like a wrong edge pair) come back as a message the form can show.
+export type ActionResult<T> = { ok: true; value: T } | { ok: false; error: string };
+
+const asResult = async <T,>(run: () => Promise<T>): Promise<ActionResult<T>> => {
+  try {
+    return { ok: true, value: await run() };
+  } catch (e) {
+    console.error("[vertex] action failed:", e);
+    return { ok: false, error: e instanceof Error ? e.message : "Something went wrong." };
+  }
+};
+
+export async function createEdgeAction(token: string, input: EdgeCreateInput): Promise<ActionResult<Edge>> {
+  return asResult(async () => (await createEdge(await graphFor(token), input)).edge);
 }
 
 export async function deleteEdgeAction(token: string, edgeId: string) {
@@ -55,9 +68,12 @@ export async function deleteEdgeAction(token: string, edgeId: string) {
 }
 
 // Removes the file from storage and from every node it hangs on.
-export async function deleteAttachmentAction(token: string, attachmentId: string): Promise<void> {
-  const att = await deleteAttachment(await graphFor(token), attachmentId);
-  if (!att) throw new Error("That file is already gone.");
+export async function deleteAttachmentAction(token: string, attachmentId: string): Promise<ActionResult<null>> {
+  return asResult(async () => {
+    const att = await deleteAttachment(await graphFor(token), attachmentId);
+    if (!att) throw new Error("That file is already gone.");
+    return null;
+  });
 }
 
 export type NodeDetail = {

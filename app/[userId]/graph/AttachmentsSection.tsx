@@ -374,7 +374,8 @@ export function AttachmentsSection({
     setError("");
     setDeleting(att.id);
     try {
-      await deleteAttachmentAction(token, att.id);
+      const result = await deleteAttachmentAction(token, att.id);
+      if (!result.ok) setError(result.error);
     } catch (e) {
       setError(e instanceof Error ? e.message : `Couldn't delete ${att.filename}.`);
     }
